@@ -262,6 +262,8 @@ def write_runtime(secrets_data: dict[str, Any], network_values: dict[str, str]) 
         "    environment:\n"
         '      STALWART_RECOVERY_MODE: "1"\n'
         f"      STALWART_RECOVERY_ADMIN: {json.dumps(recovery['username'] + ':' + recovery['password'])}\n"
+        "    healthcheck:\n"
+        '      test: ["CMD-SHELL", "curl -fsS -H \'X-Forwarded-For: 127.0.0.1\' http://127.0.0.1:8080/healthz/live >/dev/null"]\n'
     )
     write_text(RUNTIME / "bootstrap.compose.yaml", override, 0o600)
 
