@@ -14,6 +14,7 @@ from email.parser import BytesParser
 from pathlib import Path
 
 from lab import ROOT, STATE, compose_args, run, wait_healthy
+from lab_common import lab_network_values
 
 
 def protocol(*arguments: str) -> str:
@@ -93,7 +94,8 @@ def check_postfix() -> None:
     origin = "172.29.240.10/32"
     if origin not in mynetworks or "172.29.240.0/24" in mynetworks:
         raise AssertionError(f"Postfix does not limit trust to the origin /32: {mynetworks!r}")
-    if postconf("relayhost") != "[lab-sink]:2525":
+    sink_ip = lab_network_values()["MAILFORGE_LAB_SINK_IP"]
+    if postconf("relayhost") != f"[{sink_ip}]:2525":
         raise AssertionError("Postfix does not relay exclusively to the local sink.")
     for map_name, key, expected in (
         ("relay_domains", "example.com", "OK"),

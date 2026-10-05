@@ -351,7 +351,7 @@ def validate_phase2_lab(root: Path) -> list[str]:
             "@LAB_ORIGIN_IP@/32",
             "relay_recipient_maps = hash:",
             "transport_maps = hash:",
-            "relayhost = [lab-sink]:2525",
+            "relayhost = [@LAB_SINK_IP@]:2525",
             "permit_mynetworks, reject_unauth_destination",
         )
         for marker in required:

@@ -66,6 +66,7 @@ class LabHelperTests(unittest.TestCase):
                 recipients = (postfix / "relay_recipients").read_text(encoding="utf-8")
                 self.assertIn("abuse@example.com OK", recipients)
                 self.assertIn("abuse@example.org OK", recipients)
+                self.assertIn("relayhost = [172.30.240.10]:2525", (postfix / "main.cf").read_text(encoding="utf-8"))
                 self.assertIn("example.org smtp:[172.29.240.10]:25", (postfix / "transport").read_text(encoding="utf-8"))
 
     def test_stalwart_plan_keeps_domains_aliases_and_dkim_separate(self):

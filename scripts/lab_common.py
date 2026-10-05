@@ -218,8 +218,10 @@ def write_runtime(secrets_data: dict[str, Any], network_values: dict[str, str]) 
 
     domains = load_domains()
     origin_ip = network_values["MAILFORGE_LAB_ORIGIN_IP"]
+    sink_ip = network_values["MAILFORGE_LAB_SINK_IP"]
     postfix_template = (ROOT / "edge" / "postfix" / "main.cf.template").read_text(encoding="utf-8")
-    write_text(GENERATED / "postfix" / "main.cf", postfix_template.replace("@LAB_ORIGIN_IP@", origin_ip), 0o644)
+    postfix_config = postfix_template.replace("@LAB_ORIGIN_IP@", origin_ip).replace("@LAB_SINK_IP@", sink_ip)
+    write_text(GENERATED / "postfix" / "main.cf", postfix_config, 0o644)
 
     relay_domains = "".join(f"{record['domain']} OK\n" for record in domains)
     transports = "".join(f"{record['domain']} smtp:[{origin_ip}]:25\n" for record in domains)
