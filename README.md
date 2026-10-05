@@ -2,20 +2,36 @@
 
 MailForge is a reusable, self-hosted, multi-domain email platform designed for operators whose mailbox server may live behind CGNAT.
 
-The project separates the **public Internet mail edge** from the **private mailbox origin**:
+> **Status:** Phase 0 documentation is complete and Phase 1 repository/local scaffolding is implemented. The Internet mail path is not production-ready. No VPS deployment or DNS/mail cutover has started.
 
-- **Postfix edge MTA** on a small public VPS for Internet-facing SMTP on TCP/25, queueing, and outbound delivery.
-- **WireGuard** as the private transport between the public edge and the origin.
-- **Stalwart Mail Server** on the origin for domains, accounts, mailbox storage, IMAP/JMAP, authenticated submission, DKIM signing, and administrative APIs/UI.
-- **Layer-4 proxying** on the edge for client-facing protocols that must reach Stalwart without exposing the origin directly.
+MailForge separates the **public Internet mail edge** from the **private mailbox origin**:
 
-MailForge is intentionally domain-neutral. One deployment can serve `example.com`, `example.org`, and future domains without changing the architecture.
+- **Postfix edge MTA** will own Internet-facing SMTP on TCP/25, queueing, and outbound delivery.
+- **WireGuard** will provide private transport between the public edge and the origin.
+- **Stalwart Mail Server** is the authoritative source for domains, accounts, mailboxes, aliases, DKIM, and message storage.
+- **Layer-4 proxying** will forward client protocols to Stalwart, where TLS terminates.
 
-> Status: **documentation foundation complete; implementation has not started.**
+The repository is domain-neutral. One deployment can serve `example.com`, `example.org`, and future domains without duplicating the mail infrastructure.
 
-## Why MailForge exists
+## Phase 1 scaffold
 
-A conventional home-hosted mail server is difficult behind CGNAT because other mail servers must be able to reach TCP/25 and reputable outbound SMTP needs a stable public IP and reverse DNS. MailForge works around this by giving the deployment a small public edge while keeping mailbox state on infrastructure controlled by the operator.
+Phase 1 adds edge/origin/tunnel boundaries, safe domain-neutral examples, a local Compose topology, secret protections, validation tooling, tests, and CI. Compose services use the opt-in `local-scaffold` profile, an internal Docker network, and no published host ports. The Postfix baseline has no relay domains and rejects unauthenticated relay. These files are not a complete mail service and must not be deployed as production configuration.
+
+The current milestone does not include a working Internet SMTP path, real WireGuard keys, production credentials, live domains, server provisioning, DNS changes, or mail-provider changes. The next milestone is Phase 2: a local two-node mail path.
+
+## Validate locally
+
+From the repository root:
+
+```sh
+python scripts/validate_config.py --env-file .env.example
+python -m unittest discover -s tests -p 'test_*.py' -v
+docker compose --profile local-scaffold config --quiet
+```
+
+For a deployment-specific configuration, copy `.env.example` to an untracked `.env` and validate it with `python scripts/validate_config.py --env-file .env`. Production validation rejects example hostnames/domains and TEST-NET addresses. Never put secrets in `.env.example` or Git.
+
+`docker compose ... config` only renders the Compose model. Do not start the services until the Phase 2 configuration and tests are complete.
 
 ## High-level architecture
 
@@ -36,7 +52,7 @@ flowchart LR
     Edge -->|SMTP 25| Internet
 ```
 
-The edge is disposable infrastructure. The origin is the authoritative home of mailbox state.
+The edge is replaceable transport infrastructure. The origin is the authoritative home of mailbox state.
 
 ## Documentation
 

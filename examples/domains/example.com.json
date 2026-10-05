@@ -1,0 +1,19 @@
+{
+  "domain": "example.com",
+  "enabled": true,
+  "mailboxes": ["postmaster", "admin"],
+  "aliases": {
+    "abuse": "postmaster"
+  },
+  "dkim": {
+    "selector": "mf-example-com",
+    "authority": "Stalwart",
+    "private_key_storage": "Stalwart runtime state; never stored in this repository",
+    "public_dns_value": "v=DKIM1; k=rsa; p=<generated-by-stalwart>"
+  },
+  "dns": {
+    "mx": "10 mx1.mail.example.net.",
+    "spf": "v=spf1 ip4:203.0.113.10 -all",
+    "dmarc": "v=DMARC1; p=none; rua=mailto:dmarc@example.com"
+  }
+}

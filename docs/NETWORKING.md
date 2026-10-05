@@ -17,13 +17,17 @@ The origin may be behind CGNAT. No design may require unsolicited Internet traff
 
 SSH is operational infrastructure and should be restricted by administrator policy. POP3 is disabled by default.
 
+## Phase 1 Compose boundary
+
+The opt-in `local-scaffold` profile places the three service boundaries on an internal Docker network. It publishes no host ports and has no Internet route. Compose can be rendered with `docker compose --profile local-scaffold config --quiet`; starting those services is not part of Phase 1.
+
 ## Origin exposure
 
 Origin mail services bind to WireGuard/loopback/private interfaces as appropriate. They should not be exposed directly to the residential WAN.
 
 ## Tunnel addressing
 
-Use a dedicated RFC1918 subnet, for example `10.77.0.1/30` edge and `10.77.0.2/30` origin. Actual addresses are deployment-specific.
+Use a dedicated RFC1918 subnet, for example `10.77.0.1/30` edge and `10.77.0.2/30` origin. Actual addresses are deployment-specific. The origin initiates/maintains the tunnel so CGNAT does not require an inbound port forward.
 
 ## Firewall principles
 

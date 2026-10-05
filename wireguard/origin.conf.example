@@ -1,0 +1,11 @@
+# Template only. The origin initiates the tunnel and keeps it alive behind CGNAT.
+# Replace placeholders through an operator-controlled secret store.
+[Interface]
+Address = 10.77.0.2/30
+PrivateKey = <INJECT_ORIGIN_PRIVATE_KEY_AT_DEPLOYMENT>
+
+[Peer]
+PublicKey = <EDGE_PUBLIC_KEY>
+Endpoint = mx1.mail.example.net:51820
+AllowedIPs = 10.77.0.1/32
+PersistentKeepalive = 25

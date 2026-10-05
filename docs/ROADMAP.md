@@ -2,17 +2,15 @@
 
 ## Phase 0 — Documentation foundation
 
-**Status: this documentation release**
-
-Exit: coding can begin without another architecture-discovery pass.
+**Status: complete.** The architecture, trust boundaries, requirements, accepted ADRs, and production gates are documented.
 
 ## Phase 1 — Repository/local scaffolding
 
-Create structure, pinned image policy, secret-safe examples, compose profiles, config validation, and CI. No production deployment.
+**Status: implemented.** Repository boundaries, safe examples, pinned/controlled image references, secret exclusions and scanning, validation, tests, and CI are in place. No production deployment or live mail path is implemented.
 
 ## Phase 2 — Local two-node mail path
 
-Implement Stalwart origin, Postfix edge, lab tunnel/network, inbound and outbound relay, L4 client forwarding, and automated no-open-relay tests.
+Implement and test Stalwart origin, Postfix edge, lab tunnel/network, inbound and outbound relay, L4 client forwarding, and automated no-open-relay tests.
 
 ## Phase 3 — Real edge + CGNAT origin
 
