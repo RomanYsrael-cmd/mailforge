@@ -77,7 +77,7 @@ services:
       private:
         ipv4_address: ${MAILFORGE_LAB_ORIGIN_IP:-172.29.240.10}
     healthcheck:
-      test: ["CMD-SHELL", "curl -fsSk -H 'X-Forwarded-For: 127.0.0.1' https://127.0.0.1:443/healthz/live >/dev/null || curl -fsS -H 'X-Forwarded-For: 127.0.0.1' http://127.0.0.1:8080/healthz/live >/dev/null"]
+      test: ["CMD-SHELL", "curl -fsSk -H 'X-Forwarded-For: 127.0.0.1' https://127.0.0.1:443/healthz/live >/dev/null && curl -fsS -H 'X-Forwarded-For: 127.0.0.1' http://127.0.0.1:8080/healthz/live >/dev/null"]
       interval: 3s
       timeout: 3s
       retries: 40

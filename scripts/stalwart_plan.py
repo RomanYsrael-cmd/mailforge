@@ -110,7 +110,13 @@ def build_plan() -> list[dict[str, Any]]:
     origin_ip = lab_network_values()["MAILFORGE_LAB_ORIGIN_IP"]
     listeners = [
         {"name": "smtp", "protocol": "smtp", "bind": {"0.0.0.0:25": True}},
-        {"name": "https", "protocol": "http", "bind": {"0.0.0.0:443": True}, "useTls": True},
+        {
+            "name": "https",
+            "protocol": "http",
+            "bind": {"0.0.0.0:443": True},
+            "useTls": True,
+            "tlsImplicit": True,
+        },
         {"name": "submissions", "protocol": "smtp", "bind": {"0.0.0.0:465": True}, "useTls": True, "tlsImplicit": True},
         {"name": "submission", "protocol": "smtp", "bind": {"0.0.0.0:587": True}, "useTls": True, "tlsImplicit": False},
         {"name": "imaps", "protocol": "imap", "bind": {"0.0.0.0:993": True}, "useTls": True, "tlsImplicit": True},
