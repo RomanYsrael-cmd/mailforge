@@ -2,15 +2,22 @@
 
 Testing must prove MailForge is safe to expose, not merely that containers start.
 
-## Layers
+## Phase 1 checks
 
-### Static validation
+Current automated checks run without production resources and cover:
 
-Validate configuration syntax, duplicate ports, missing variables, production placeholders, secret permissions, version policy, and documentation links.
+- required/non-empty environment values, hostname/IP/CIDR syntax, production placeholder rejection, tunnel address collision, and explicit relay-domain rules;
+- domain example structure, independent mailboxes/aliases/DKIM selectors, and shared infrastructure;
+- image tag policy, expected repository paths, Markdown references, and obvious private-key/token material;
+- Python unit tests, shell syntax, rendered Compose configuration, HAProxy TCP configuration, and Postfix's deny-by-default relay settings.
+
+The local Compose profile is isolated and has no published ports. Rendering Compose does not start containers.
+
+## Later layers
 
 ### Local integration
 
-Simulate edge and origin and prove:
+Phase 2 will simulate edge and origin and prove:
 
 - edge accepts only configured relay domains;
 - unauthorized relay is rejected;
@@ -37,4 +44,4 @@ The release is not reusable until two unrelated domains operate simultaneously w
 
 ## CI
 
-Early CI validates docs/config/secrets. Later CI adds ephemeral integration tests. CI must not need production secrets.
+Phase 1 CI validates docs/config/secrets and scaffold syntax. CI must not need production secrets. Later CI adds isolated integration tests; no test may rely on a production VPS, DNS, or real mail provider.

@@ -39,17 +39,6 @@ MailForge v1 will provide:
 
 The first release does not promise commercial customer tenancy or billing, bulk marketing delivery, automatic reputation warming, multi-region HA, a custom webmail client, a custom mail storage engine, or bypassing anti-spam/provider restrictions.
 
-## Success criteria
-
-The architecture is proven when:
-
-1. a message from an external provider reaches a mailbox on Domain A;
-2. the mailbox can reply and pass SPF/DKIM/DMARC alignment checks;
-3. the same deployment can onboard Domain B without duplicating infrastructure;
-4. the origin can become unreachable temporarily while the edge safely queues inbound mail;
-5. restoring the origin from a documented backup can recover mailbox and configuration state;
-6. a repository clone contains no production secret material.
-
 ## Current phase
 
-The current phase is **documentation and architectural freeze**. The next phase is implementation scaffolding, not production cutover.
+Phase 0 documentation and architectural freeze is complete. Phase 1 repository/local scaffolding is implemented. The production mail path, server deployment, and DNS cutover have not started; Phase 2 is the next implementation milestone.

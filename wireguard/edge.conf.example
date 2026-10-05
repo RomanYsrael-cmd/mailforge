@@ -1,0 +1,10 @@
+# Template only. Replace placeholders through an operator-controlled secret store.
+# Do not use this file as-is and never commit a real private key.
+[Interface]
+Address = 10.77.0.1/30
+ListenPort = 51820
+PrivateKey = <INJECT_EDGE_PRIVATE_KEY_AT_DEPLOYMENT>
+
+[Peer]
+PublicKey = <ORIGIN_PUBLIC_KEY>
+AllowedIPs = 10.77.0.2/32

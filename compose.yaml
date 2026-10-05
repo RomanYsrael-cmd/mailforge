@@ -1,0 +1,53 @@
+name: mailforge
+
+# These containers are an implementation scaffold, not a mail service.
+# The profile is opt-in; no ports are published to the host in Phase 1.
+services:
+  edge-postfix:
+    image: mailforge/edge-postfix:phase1-scaffold
+    build: ./edge/postfix
+    profiles: [local-scaffold]
+    hostname: ${MAILFORGE_EDGE_HOSTNAME:-mx1.mail.example.net}
+    expose:
+      - "25"
+    volumes:
+      - "${MAILFORGE_DATA_ROOT:-./var/mailforge}/postfix-queue:/var/spool/postfix"
+    networks:
+      - mailforge-lab
+
+  edge-proxy:
+    image: haproxy:3.4.4-alpine
+    profiles: [local-scaffold]
+    depends_on:
+      - origin-stalwart
+    volumes:
+      - ./edge/proxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    expose:
+      - "443"
+      - "465"
+      - "587"
+      - "993"
+    networks:
+      - mailforge-lab
+
+  origin-stalwart:
+    image: stalwartlabs/stalwart:v0.16
+    profiles: [local-scaffold]
+    hostname: ${MAILFORGE_CLIENT_HOSTNAME:-mail.mail.example.net}
+    volumes:
+      - "${MAILFORGE_DATA_ROOT:-./var/mailforge}/stalwart/config:/etc/stalwart"
+      - "${MAILFORGE_DATA_ROOT:-./var/mailforge}/stalwart/data:/var/lib/stalwart"
+    expose:
+      - "25"
+      - "443"
+      - "465"
+      - "587"
+      - "993"
+    networks:
+      - mailforge-lab
+
+networks:
+  mailforge-lab:
+    name: mailforge-lab
+    driver: bridge
+    internal: true

@@ -1,5 +1,7 @@
 # Operations
 
+The steps below describe the future production operating model. Phase 1 has no deployed services, production credentials, or live mail path.
+
 ## Operating model
 
 The edge is replaceable public transport infrastructure. The origin is authoritative mailbox infrastructure.

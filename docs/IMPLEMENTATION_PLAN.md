@@ -1,62 +1,41 @@
 # Implementation Plan
 
-This is the handoff from architecture to coding.
+This document tracks the handoff from architecture to implementation.
 
-## Documentation definition of done
+## Completed: Phase 1 scaffolding
 
-The docs phase is complete when component responsibilities, trust boundaries, public ports, domain-neutral config, secret policy, mail flows, failure behavior, testing, and production gates are explicit. The current documentation set meets that bar.
+The repository now contains:
 
-## Next milestone: Phase 1 scaffolding
+- distinct `edge/postfix/`, `edge/proxy/`, `origin/stalwart/`, and `wireguard/` scaffolds;
+- a safe, domain-neutral `.env.example` and independent example domain records;
+- an opt-in internal Compose topology with no published ports;
+- secret/runtime exclusions, a repository validator, tests, and CI checks;
+- updated docs describing what is and is not implemented.
 
-The first coding PR must not modify live DNS or an existing mail provider.
+This does not provide a functional or production-ready mail path. The Postfix config has no hosted relay map; the Stalwart seed is incomplete; WireGuard keys are placeholders; the proxy only describes the intended TCP forwarding.
 
-Target layout:
+## Next milestone: Phase 2 local mail path
 
-```text
-/
-├── edge/
-│   ├── postfix/
-│   └── proxy/
-├── origin/
-│   └── stalwart/
-├── wireguard/
-├── scripts/
-├── tests/
-│   ├── integration/
-│   └── security/
-├── examples/
-│   └── domains/
-├── docs/
-├── .env.example
-└── compose*.yml
-```
+**Edge:** Postfix public SMTP listener, explicit relay domains, origin next-hop, origin-only trusted outbound path, persistent queue, and health checks.
 
-Exact filenames may change if implementation shows a cleaner structure.
+**Origin:** Stalwart persistent data, local domains/accounts, trusted edge delivery, outbound relay through edge, submission/IMAP/HTTPS, and per-domain DKIM.
 
-### Phase 1 acceptance criteria
-
-- no real credentials/private keys;
-- reviewed pinned versions/series;
-- `.gitignore` excludes secrets/runtime state;
-- examples use reserved domains/IPs;
-- config validator distinguishes non-production from production expectations;
-- CI detects common committed secrets/private keys;
-- compose/config renders without contacting production;
-- README accurately reports implemented status.
-
-## Phase 2 boundaries
-
-**Edge:** Postfix public SMTP listener, explicit relay domains, origin next-hop, origin-only trusted outbound path, persistent queue, health checks.
-
-**Origin:** Stalwart persistent data, local domains/accounts, trusted edge delivery, outbound relay through edge, submission/IMAP/HTTPS, per-domain DKIM.
-
-**Tunnel:** WireGuard point-to-point; no inbound requirement on CGNAT origin.
+**Tunnel:** WireGuard point-to-point; no inbound requirement at a CGNAT origin.
 
 **Client proxy:** L4 forwarding; TLS remains at Stalwart unless an ADR supersedes that decision.
 
+### Phase 2 acceptance criteria
+
+- no real credentials/private keys;
+- local inbound/outbound relay is deny-by-default and automated no-open-relay tests pass;
+- two example domains work independently through one stack;
+- tunnel behavior works without unsolicited inbound connectivity to the origin;
+- Compose and service configuration validate without production resources;
+- documentation describes the tested behavior accurately.
+
 ## Deferred choices
 
-These do not block Phase 1: observability stack, backup vendor/tool, automatic DNS provider integration, optional webmail, secondary MX/HA, and CLI language.
+Observability stack, backup vendor/tool, automatic DNS provider integration, optional webmail, secondary MX/HA, and CLI language remain deferred.
 
 ## Production gate
 

@@ -8,44 +8,25 @@ The repository must not encode one operator, one domain, one IP address, or one 
 
 ### Repository defaults
 
-Public schemas, examples, CI rules, and non-secret defaults.
+Public schemas, examples, CI rules, and non-secret defaults. `.env.example` contains only reserved domains, TEST-NET addresses, and RFC1918 tunnel addresses.
 
 ### Deployment configuration
 
-Installation-specific but non-secret values such as infrastructure hostnames, tunnel subnet, edge IP, storage paths, and feature toggles. These may live in untracked local files generated from committed examples.
+Installation-specific but non-secret values such as infrastructure hostnames, tunnel subnet, edge IP, storage paths, and feature toggles. These may live in an untracked `.env` generated from the committed example.
 
 ### Secrets
 
 Never committed: WireGuard private keys, mailbox/admin passwords, API tokens, DNS credentials, backup keys, TLS private keys, and DKIM private keys unless protected inside authoritative Stalwart state.
 
-## Conceptual domain object
+## Domain examples
 
-```yaml
-name: example.com
-enabled: true
-dns:
-  mode: manual
-mail:
-  catch_all: false
-  plus_addressing: true
-security:
-  dkim: automatic
-  dmarc_policy: none
-```
-
-This is an architectural example, not yet a runtime schema.
-
-## Domain independence
-
-Adding a second domain must not require another VPS, Postfix instance, Stalwart instance, or WireGuard tunnel. It should require only domain-specific config, DNS, and identities.
-
-## Naming
-
-Future implementation should use generic variables such as `MAILFORGE_EDGE_HOSTNAME`, `MAILFORGE_CLIENT_HOSTNAME`, and `MAILFORGE_EDGE_PUBLIC_IP`, never names tied to one hosted application/domain.
+`examples/domains/*.json` demonstrates independent domain-scoped mailboxes, aliases, DKIM selectors, and DNS records. Both examples use one shared infrastructure hostname and edge address. These JSON files illustrate the model; Stalwart remains the runtime authority and there is no second domain registry.
 
 ## Validation
 
-Before services start, validate required hostnames, production placeholder replacement, tunnel address conflicts, explicit relay domains, secret file permissions, pinned images, and documented public ports.
+Run `python scripts/validate_config.py --env-file .env.example` or use `scripts/validate-config.sh` on POSIX systems. The dependency-free validator checks required deployment values, hostnames, addresses, relay domains, WireGuard collisions/subnet consistency, repository paths, domain examples, image tags, internal Markdown links, and obvious committed key/token material. For production, pass a deployment-specific env file and `--environment production`; example domains, TEST-NET addresses, and non-global edge addresses are rejected.
+
+Compose defaults to non-published services behind an internal Docker network. Its opt-in `local-scaffold` profile exists to render and review service boundaries only; it is not a deployable mail path.
 
 ## Future control plane
 

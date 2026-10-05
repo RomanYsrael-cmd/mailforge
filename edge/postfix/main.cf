@@ -1,0 +1,16 @@
+# Phase 1 safety baseline. This is deliberately not a production mail route.
+# Relay policy remains deny-by-default until Phase 2 supplies an explicit map.
+compatibility_level = 3.6
+myhostname = mailforge.invalid
+mydomain = mailforge.invalid
+myorigin = $myhostname
+inet_interfaces = all
+inet_protocols = all
+mydestination = $myhostname, localhost.$mydomain, localhost
+mynetworks = 127.0.0.0/8 [::1]/128
+relay_domains =
+smtpd_relay_restrictions = permit_mynetworks, reject_unauth_destination
+smtpd_recipient_restrictions = reject_unauth_destination
+smtpd_client_restrictions = permit_mynetworks, reject
+smtpd_helo_required = yes
+disable_vrfy_command = yes
