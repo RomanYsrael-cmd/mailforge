@@ -114,7 +114,12 @@ def build_plan() -> list[dict[str, Any]]:
         {"name": "submissions", "protocol": "smtp", "bind": {"0.0.0.0:465": True}, "useTls": True, "tlsImplicit": True},
         {"name": "submission", "protocol": "smtp", "bind": {"0.0.0.0:587": True}, "useTls": True, "tlsImplicit": False},
         {"name": "imaps", "protocol": "imap", "bind": {"0.0.0.0:993": True}, "useTls": True, "tlsImplicit": True},
-        {"name": "management", "protocol": "http", "bind": {f"{origin_ip}:8080": True}, "useTls": False},
+        {
+            "name": "management",
+            "protocol": "http",
+            "bind": {f"{origin_ip}:8080": True, "127.0.0.1:8080": True},
+            "useTls": False,
+        },
     ]
     operations.append(
         {

@@ -98,6 +98,10 @@ class LabHelperTests(unittest.TestCase):
             self.assertEqual({("abuse", "#domain-0"), ("abuse", "#domain-1")}, {(item["name"], item["domainId"]) for item in aliases})
             dkim_op = next(item for item in plan if item["object"] == "DkimSignature")
             self.assertEqual({"mf-example-com", "mf-example-org"}, {item["selector"] for item in dkim_op["value"].values()})
+            listener_op = next(item for item in plan if item["object"] == "NetworkListener")
+            management = listener_op["value"]["listener-management"]
+            self.assertIn("127.0.0.1:8080", management["bind"])
+            self.assertIn("172.29.240.10:8080", management["bind"])
             strategy = next(item for item in plan if item["object"] == "MtaOutboundStrategy")
             self.assertEqual("'postfix-edge'", strategy["value"]["route"]["else"])
 

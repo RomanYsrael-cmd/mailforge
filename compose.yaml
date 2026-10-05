@@ -32,6 +32,18 @@ services:
       retries: 30
       start_period: 5s
 
+  postfix-queue-owner:
+    image: mailforge/edge-postfix:phase2-lab
+    profiles: [lab-tools]
+    user: "0:0"
+    network_mode: none
+    entrypoint: ["/usr/local/bin/mailforge-fix-queue-owner"]
+    environment:
+      MAILFORGE_LAB_UID: ${MAILFORGE_LAB_UID:-2000}
+      MAILFORGE_LAB_GID: ${MAILFORGE_LAB_GID:-2000}
+    volumes:
+      - "${MAILFORGE_DATA_ROOT:-./var/mailforge}/postfix-queue:/var/spool/postfix"
+
   edge-proxy:
     image: haproxy:3.4.4-alpine
     profiles: [lab]

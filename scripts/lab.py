@@ -96,9 +96,28 @@ def wait_healthy(service: str, timeout: int = 120, *, bootstrap: bool = False) -
             if status == "healthy":
                 return
             if status == "unhealthy":
-                raise RuntimeError(f"{service} became unhealthy:\n{logs()}")
+                raise RuntimeError(f"{service} became unhealthy:\n{_health_output(container_ids[0])}\n{logs()}")
         time.sleep(2)
-    raise TimeoutError(f"{service} did not become healthy within {timeout} seconds.\n{logs()}")
+    detail = _health_output(container_ids[0]) if container_ids else "No container was created."
+    raise TimeoutError(f"{service} did not become healthy within {timeout} seconds:\n{detail}\n{logs()}")
+
+
+def _health_output(container_id: str) -> str:
+    result = subprocess.run(
+        [docker_binary(), "inspect", "--format", "{{json .State.Health.Log}}", container_id],
+        cwd=ROOT,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        check=False,
+    )
+    if result.returncode:
+        return result.stdout.strip()
+    try:
+        entries = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return result.stdout.strip()
+    return "\n".join(item.get("Output", "").strip() for item in entries[-5:] if item.get("Output"))
 
 
 def logs() -> str:
@@ -175,12 +194,7 @@ def down(*, remove_state: bool = False) -> None:
         if (containers.stdout or "").strip():
             run(["stop", "edge-postfix"])
             run(["rm", "-f", "edge-postfix"])
-            run(
-                [
-                    "run", "--rm", "--no-deps", "-T", "--user", "0:0",
-                    "--entrypoint", "/usr/local/bin/mailforge-fix-queue-owner", "edge-postfix",
-                ]
-            )
+            run(["run", "--rm", "--no-deps", "-T", "postfix-queue-owner"], tools=True)
         run(["down", "--remove-orphans"])
     if remove_state and STATE.exists():
         shutil.rmtree(_safe_state_path())
