@@ -2,17 +2,19 @@
 
 ## Phase 0 — Documentation foundation
 
-**Status: complete.** The architecture, trust boundaries, requirements, accepted ADRs, and production gates are documented.
+Complete. Architecture, trust boundaries, requirements, accepted ADRs, and production gates are documented.
 
 ## Phase 1 — Repository/local scaffolding
 
-**Status: implemented.** Repository boundaries, safe examples, pinned/controlled image references, secret exclusions and scanning, validation, tests, and CI are in place. No production deployment or live mail path is implemented.
+Complete. Repository boundaries, safe examples, secret exclusions and scanning, validation, tests, and CI are in place.
 
 ## Phase 2 — Local two-node mail path
 
-Implement and test Stalwart origin, Postfix edge, lab tunnel/network, inbound and outbound relay, L4 client forwarding, and automated no-open-relay tests.
+Implemented. The internal lab proves Postfix inbound routing and queueing, Stalwart mailbox delivery and authenticated outbound submission, local sink delivery, per-domain DKIM evidence, open-relay rejection, multi-domain isolation, and HAProxy TLS passthrough.
 
-## Phase 3 — Real edge + CGNAT origin
+The lab emulates the edge/origin trust boundary with an internal Compose network. It does not exercise a real WireGuard interface, handshake, CGNAT, or host firewall.
+
+## Phase 3 — Real edge and CGNAT origin
 
 Provision a real VPS edge, establish WireGuard from the private origin, enforce firewalls, and add queue/tunnel health checks. No DNS cutover until gates pass.
 
@@ -30,4 +32,4 @@ Test restore, upgrade/rollback, alerts, log retention, rate limiting, and abuse 
 
 ## Phase 7 — Automation/control CLI
 
-Automate proven workflows such as domain/mailbox creation, DNS verification, status, backups, and upgrades. Automation comes after the architecture is proven.
+Automate proven workflows such as domain/mailbox creation, DNS verification, status, backups, and upgrades after the architecture is proven.

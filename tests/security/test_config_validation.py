@@ -4,6 +4,8 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
+TEST_TEMP = ROOT / "var" / "test-temp"
+TEST_TEMP.mkdir(parents=True, exist_ok=True)
 SPEC = importlib.util.spec_from_file_location("mailforge_validator", ROOT / "scripts" / "validate_config.py")
 validator = importlib.util.module_from_spec(SPEC)
 assert SPEC and SPEC.loader
@@ -54,18 +56,21 @@ class EnvironmentValidationTests(unittest.TestCase):
                 self.assertTrue(validator.validate_environment(values))
 
     def test_floating_image_tag_fails(self):
-        with tempfile.TemporaryDirectory() as temporary:
+        with tempfile.TemporaryDirectory(dir=TEST_TEMP) as temporary:
             root = Path(temporary)
             (root / "compose.yaml").write_text("services:\n  mail:\n    image: example/mail:latest\n", encoding="utf-8")
             self.assertTrue(validator.validate_image_pins(root))
 
     def test_private_key_marker_is_rejected(self):
-        with tempfile.TemporaryDirectory() as temporary:
+        with tempfile.TemporaryDirectory(dir=TEST_TEMP) as temporary:
             root = Path(temporary)
             fixture = root / "sample.txt"
             fixture.write_text("-----BEGIN " + "PRIVATE KEY-----\\nfixture\\n", encoding="utf-8")
             errors = validator.scan_private_material(root, [fixture])
             self.assertTrue(any("private key marker" in error for error in errors))
+
+    def test_phase_two_lab_keeps_internal_networks_and_closed_relay_policy(self):
+        self.assertEqual([], validator.validate_phase2_lab(ROOT))
 
 
 if __name__ == "__main__":

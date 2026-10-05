@@ -1,26 +1,27 @@
 # Domain Onboarding Runbook
 
-Phase 1 includes safe illustrative records in `examples/domains/`. Production onboarding commands remain deferred until a tested Phase 2 mail path exists. Do not apply the example DNS values literally.
+The files under examples/domains/ are reserved, illustrative lab fixtures. The Phase 2 lab provisions example.com and example.org from those files and derives the Postfix SMTP recipient map from the same input. Do not apply the example DNS values literally.
 
-## Preconditions
+Production onboarding commands and DNS automation remain deferred. Phase 3 must establish the real edge/origin transport and production operating controls first.
 
-Domain/DNS control, healthy edge/origin/tunnel, current backup, and a migration plan if the domain already receives mail elsewhere.
+## Production preconditions
 
-## Planned steps
+Confirm domain/DNS control, healthy edge/origin/tunnel, current backup, and a migration plan if the domain already receives mail elsewhere.
 
-1. create/enable domain in Stalwart;
-2. create initial mailbox/aliases;
-3. generate or confirm per-domain DKIM;
-4. add domain to the edge's explicit relay map;
-5. produce DNS records;
-6. publish DKIM/SPF and then MX;
-7. publish DMARC in monitoring mode;
-8. verify external DNS;
-9. test unknown-recipient rejection;
-10. test inbound from multiple providers;
-11. test outbound to multiple providers;
-12. inspect authentication headers;
-13. record successful onboarding.
+## Planned production steps
+
+1. Create/enable the domain in Stalwart.
+2. Create initial mailbox and aliases.
+3. Generate or confirm per-domain DKIM.
+4. Add the domain to the edge's explicit relay and recipient maps.
+5. Produce reviewed DNS records.
+6. Publish DKIM/SPF, then MX.
+7. Publish DMARC in monitoring mode.
+8. Verify external DNS.
+9. Test unknown-recipient rejection.
+10. Test inbound and outbound with controlled external providers.
+11. Inspect authentication headers.
+12. Record successful onboarding.
 
 If replacing an existing provider, account for DNS TTL and temporary dual-delivery risk.
 

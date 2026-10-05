@@ -6,21 +6,21 @@ Build a reusable open-source email platform that lets one operator host mail for
 
 ## Primary use case
 
-An operator owns several domains and wants addresses such as `admin@example.com`, `support@example.com`, and `noreply@example.org`. The same MailForge deployment must support adding future domains without creating a separate mail stack per domain.
+An operator owns several domains and wants addresses such as admin@example.com, support@example.com, and noreply@example.org. The same MailForge deployment must support adding future domains without creating a separate mail stack per domain.
 
 ## Design principles
 
-1. **Domain-neutral infrastructure.** Domains are data/configuration, not architecture.
-2. **Public edge, private origin.** Internet routing concerns are separated from mailbox state.
-3. **No open relay.** Relaying is explicit and least-privilege.
-4. **Secrets never in Git.** Public repository safety is a first-class requirement.
-5. **Recoverability over cleverness.** Queueing, backup, restore, and failure modes must be understandable.
-6. **Reproducible deployment.** A fresh edge and origin can be reconstructed from source plus secret material and backups.
-7. **Incremental automation.** First make the mail path correct and observable; then automate onboarding and operations.
+1. Domain-neutral infrastructure. Domains are data/configuration, not architecture.
+2. Public edge, private origin. Internet routing concerns are separated from mailbox state.
+3. No open relay. Relaying is explicit and least-privilege.
+4. Secrets never in Git. Public repository safety is a first-class requirement.
+5. Recoverability over cleverness. Queueing, backup, restore, and failure modes must be understandable.
+6. Reproducible deployment. A fresh edge and origin can be reconstructed from source plus secret material and backups.
+7. Incremental automation. First make the mail path correct and observable; then automate onboarding and operations.
 
 ## v1 scope
 
-MailForge v1 will provide:
+MailForge v1 is intended to provide:
 
 - one public edge VPS with a stable public IPv4 and configurable PTR/rDNS;
 - one private origin capable of operating behind CGNAT;
@@ -41,4 +41,4 @@ The first release does not promise commercial customer tenancy or billing, bulk 
 
 ## Current phase
 
-Phase 0 documentation and architectural freeze is complete. Phase 1 repository/local scaffolding is implemented. The production mail path, server deployment, and DNS cutover have not started; Phase 2 is the next implementation milestone.
+Phase 0 documentation and Phase 1 scaffolding are complete. Phase 2 implements an isolated local two-node mail path using example domains and a local SMTP sink. The lab does not run WireGuard and has not touched production infrastructure. Phase 3 will establish the real edge and CGNAT origin path.

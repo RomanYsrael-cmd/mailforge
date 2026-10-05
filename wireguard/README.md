@@ -1,5 +1,5 @@
 # WireGuard scaffold
 
-The public edge listens on the configured UDP port. The origin uses the edge endpoint and `PersistentKeepalive` to initiate and maintain the tunnel from behind CGNAT; no unsolicited public connection to the origin is required.
+The example files document the intended edge/origin tunnel without containing real private keys. Never commit generated WireGuard keys.
 
-The `.conf.example` files use only TEST-NET/RFC1918 addresses and unmistakable key placeholders. They are templates, not loadable deployments. Generate keys on the target hosts during a later deployment phase and inject private keys through a secret store or protected files outside Git. Never commit a filled configuration. Client and mail services should bind to the tunnel where appropriate; do not expose the origin directly to the Internet.
+Phase 2 uses an internal Compose network to exercise the restricted edge-to-origin service path. It does not start WireGuard, create host interfaces, test peer handshakes, or validate CGNAT traversal. Phase 3 must prove the actual WireGuard path and host firewall rules before any DNS cutover.

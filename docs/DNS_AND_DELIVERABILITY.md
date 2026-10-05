@@ -2,54 +2,45 @@
 
 MailForge can provide protocol correctness; no self-hosted platform can guarantee inbox placement or IP reputation.
 
+Phase 2 uses reserved example domains only. It does not query public DNS, publish records, or send mail to external providers. These records are documentation examples only and must not be applied literally.
+
 ## Infrastructure records
 
 Example only:
 
-```text
-mx1.mail.example.net.   A   203.0.113.10
-mail.mail.example.net. A   203.0.113.10
-PTR: 203.0.113.10 -> mx1.mail.example.net
-```
+    mx1.mail.example.net.   A   203.0.113.10
+    mail.mail.example.net.  A   203.0.113.10
+    PTR: 203.0.113.10 -> mx1.mail.example.net
 
 ## Hosted domain
 
-For `example.com`:
+For example.com:
 
-```dns
-example.com. MX 10 mx1.mail.example.net.
-example.com. TXT "v=spf1 ip4:203.0.113.10 -all"
-_dmarc.example.com. TXT "v=DMARC1; p=none; rua=mailto:dmarc@example.com"
-```
-
-Do not publish the example values literally.
+    example.com. MX 10 mx1.mail.example.net.
+    example.com. TXT "v=spf1 ip4:203.0.113.10 -all"
+    _dmarc.example.com. TXT "v=DMARC1; p=none; rua=mailto:dmarc@example.com"
 
 Use a separate DKIM key/selector per hosted domain. Publish only the public key. Start DMARC in monitoring mode, then tighten policy after all legitimate sources align.
 
 ## Alignment
 
-Outbound mail should satisfy SPF authorization for the edge IP and DKIM alignment with the visible From domain. DMARC should pass via at least one aligned mechanism.
+Production outbound mail should satisfy SPF authorization for the edge IP and DKIM alignment with the visible From domain. DMARC should pass through at least one aligned mechanism.
 
-## Onboarding sequence
+## Production onboarding sequence
 
-1. confirm domain/DNS control;
-2. add domain to Stalwart;
-3. generate/confirm DKIM;
-4. add domain to edge relay destinations;
-5. publish MX/SPF/DKIM/DMARC;
-6. verify external DNS;
-7. test inbound;
-8. test outbound to multiple providers;
-9. inspect authentication headers;
-10. tighten DMARC only after confidence is established.
+1. Confirm domain/DNS control.
+2. Add the domain to Stalwart.
+3. Generate/confirm DKIM.
+4. Add the domain to edge relay and recipient destinations.
+5. Publish MX/SPF/DKIM/DMARC.
+6. Verify external DNS.
+7. Test inbound and outbound to controlled providers.
+8. Inspect authentication headers.
+9. Tighten DMARC only after confidence is established.
 
-## PTR
+## PTR and reputation
 
-PTR belongs to the shared public edge identity, not each hosted domain. Adding another hosted domain should not require a PTR change.
-
-## Reputation
-
-Before production, check blocklists, confirm provider mail policy, avoid high-volume bursts, maintain consistent HELO/PTR, send only legitimate authenticated mail, and monitor bounces/abuse.
+PTR belongs to the shared public edge identity, not each hosted domain. Before production, check provider TCP/25 policy and blocklists, confirm HELO/PTR consistency, avoid high-volume bursts, send only legitimate authenticated mail, and monitor bounces/abuse.
 
 ## Optional hardening
 

@@ -10,6 +10,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -22,14 +23,19 @@ jobs:
       - name: Run configuration, documentation, image, and secret validation
         run: python scripts/validate_config.py --env-file .env.example
 
-      - name: Run scaffold tests
+      - name: Run unit and security tests
         run: python -m unittest discover -s tests -p 'test_*.py' -v
 
       - name: Check shell script syntax
-        run: bash -n scripts/validate-config.sh
+        run: |
+          bash -n scripts/validate-config.sh
+          sh -n edge/postfix/docker-entrypoint.sh
+
+      - name: Prepare generated lab inputs
+        run: python scripts/lab.py prepare --fresh
 
       - name: Render Compose configuration
-        run: docker compose --profile local-scaffold config --quiet
+        run: docker compose --project-directory . --env-file var/mailforge/runtime/compose.env --profile lab --profile lab-tools config --quiet
 
       - name: Validate HAProxy TCP configuration
         run: docker run --rm -v "$PWD/edge/proxy:/usr/local/etc/haproxy:ro" haproxy:3.4.4-alpine haproxy -c -f /usr/local/etc/haproxy/haproxy.cfg
@@ -38,3 +44,6 @@ jobs:
         run: |
           docker build -t mailforge-edge-postfix:ci ./edge/postfix
           docker run --rm --entrypoint sh mailforge-edge-postfix:ci -c 'postfix check && test "$(postconf -h smtpd_relay_restrictions)" = "permit_mynetworks, reject_unauth_destination" && test -z "$(postconf -h relay_domains)"'
+
+      - name: Build, provision, and test the Phase 2 mail path
+        run: python scripts/lab.py ci

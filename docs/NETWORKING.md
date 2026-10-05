@@ -1,50 +1,44 @@
 # Networking
 
-## Assumption
+## Production assumption
 
-The origin may be behind CGNAT. No design may require unsolicited Internet traffic to reach the origin's residential interface. The origin maintains a WireGuard relationship to the edge.
+The origin may be behind CGNAT. The production design must not require unsolicited Internet traffic to reach the origin. The origin will establish and maintain a WireGuard relationship to the edge in Phase 3.
 
-## Public edge ports
+## Phase 2 Compose networks
+
+All lab networks are Docker bridge networks marked internal. No service publishes a host port.
+
+| Network | Members | Purpose |
+|---|---|---|
+| untrusted | test SMTP client, Postfix edge, HAProxy | Simulates an untrusted client reaching inbound SMTP and client protocol proxy ports |
+| private | Postfix edge, HAProxy, Stalwart origin, CLI provisioner, TLS probe | Simulates the restricted edge-to-origin path |
+| sink-only | Postfix edge, local SMTP sink | Provides the only route for remote-recipient mail |
+
+The edge has a fixed address on each network. Stalwart has one fixed private address. Postfix trusts only that Stalwart /32. The test client is not attached to the private or sink network. Stalwart is not attached to the sink network, so it must use Postfix for outbound mail.
+
+The private Compose network tests the logical trust boundary and routing policy. It is not a WireGuard tunnel: it does not test encryption, peer keys, handshakes, CGNAT traversal, or host firewall rules. Phase 3 must validate those on real edge/origin hosts.
+
+## Lab ports
 
 | Port | Purpose | Terminates at |
 |---|---|---|
-| 25/tcp | server-to-server SMTP | Postfix edge |
-| 443/tcp | HTTPS/JMAP/Web UI as enabled | Stalwart via L4 proxy |
-| 465/tcp | implicit TLS submission | Stalwart via L4 proxy |
-| 587/tcp | SMTP submission | Stalwart via L4 proxy |
-| 993/tcp | IMAPS | Stalwart via L4 proxy |
-| configurable UDP | WireGuard | WireGuard |
+| 25/tcp | inbound server-to-server SMTP | Postfix |
+| 443/tcp | HTTPS/JMAP and Web UI | Stalwart via HAProxy TCP forwarding |
+| 465/tcp | implicit TLS submission | Stalwart via HAProxy TCP forwarding |
+| 587/tcp | STARTTLS submission | Stalwart via HAProxy TCP forwarding |
+| 993/tcp | IMAPS | Stalwart via HAProxy TCP forwarding |
+| 8080/tcp | Stalwart management API | Stalwart, bound only to its private lab address |
 
-SSH is operational infrastructure and should be restricted by administrator policy. POP3 is disabled by default.
+The SMTP sink listens on 2525 only on the sink-only network. It has no host binding.
 
-## Phase 1 Compose boundary
+## Production firewall principles
 
-The opt-in `local-scaffold` profile places the three service boundaries on an internal Docker network. It publishes no host ports and has no Internet route. Compose can be rendered with `docker compose --profile local-scaffold config --quiet`; starting those services is not part of Phase 1.
-
-## Origin exposure
-
-Origin mail services bind to WireGuard/loopback/private interfaces as appropriate. They should not be exposed directly to the residential WAN.
-
-## Tunnel addressing
-
-Use a dedicated RFC1918 subnet, for example `10.77.0.1/30` edge and `10.77.0.2/30` origin. Actual addresses are deployment-specific. The origin initiates/maintains the tunnel so CGNAT does not require an inbound port forward.
-
-## Firewall principles
-
-Edge: allow SMTP/client/tunnel ports, deny other unsolicited traffic, and trust outbound relay only from the WireGuard origin or explicit authenticated routes.
+Edge: allow only required public SMTP/client/tunnel ports, deny other unsolicited traffic, and trust outbound relay only from the WireGuard origin address or an explicit authenticated route.
 
 Origin: allow required services from the edge tunnel address, restrict management, and keep default-deny inbound where practical.
 
-## L4 proxying
+SMTP/25 terminates at Postfix for queueing. Client TLS terminates at Stalwart. Do not publish AAAA until IPv6 is intentionally configured, reachable, firewalled, and tested.
 
-Client protocols use TCP-mode forwarding so TLS terminates at Stalwart. SMTP/25 is intentionally different: Postfix terminates it to provide queueing.
+## Production acceptance tests
 
-## DNS and IPv6
-
-MX resolves to the public edge, never the CGNAT origin. PTR should map the edge public IP to its SMTP hostname, and forward DNS should resolve back.
-
-Do not publish AAAA until IPv6 is intentionally configured, reachable, firewall-protected, and tested.
-
-## Network acceptance tests
-
-Verify external TCP/25 reachability, edge outbound TCP/25, WireGuard handshake freshness, intended origin-only interfaces, no open relay, client TLS, and the public IP observed by remote recipients.
+Phase 3 and later must verify external TCP/25, edge outbound TCP/25, fresh WireGuard handshake, origin-bound services, no open relay, production client TLS, and the public address observed by recipients.

@@ -1,42 +1,31 @@
 # Implementation Plan
 
-This document tracks the handoff from architecture to implementation.
-
 ## Completed: Phase 1 scaffolding
 
-The repository now contains:
+Phase 1 created the edge/origin/tunnel boundaries, domain-neutral fixtures, secret protections, validation tooling, tests, and CI. Its Postfix main.cf remains a closed default configuration.
 
-- distinct `edge/postfix/`, `edge/proxy/`, `origin/stalwart/`, and `wireguard/` scaffolds;
-- a safe, domain-neutral `.env.example` and independent example domain records;
-- an opt-in internal Compose topology with no published ports;
-- secret/runtime exclusions, a repository validator, tests, and CI checks;
-- updated docs describing what is and is not implemented.
+## Completed: Phase 2 local two-node mail path
 
-This does not provide a functional or production-ready mail path. The Postfix config has no hosted relay map; the Stalwart seed is incomplete; WireGuard keys are placeholders; the proxy only describes the intended TCP forwarding.
+Phase 2 implements a repeatable isolated lab:
 
-## Next milestone: Phase 2 local mail path
+- Postfix accepts the two fixture domains and only fixture-listed mailboxes and aliases.
+- Hosted mail routes to Stalwart's fixed private lab address. Stalwart owns mailbox state.
+- Postfix trusts the origin's single /32 address for outbound relay and sends all relayed mail to the local SMTP sink.
+- Stalwart uses RocksDB persistence, fixture-derived domains/accounts/aliases, separate generated DKIM keys, SMTP submission, IMAPS, HTTPS, and declarative CLI provisioning.
+- HAProxy forwards TCP ports 443, 465, 587, and 993; TLS remains at Stalwart.
+- The integration suite proves inbound delivery to each domain, aliases, recipient/domain and open-relay rejection, authenticated outbound sink delivery, DKIM signature domain/selector, queue retention while the origin is down, and automatic queue retry after it returns.
+- Three internal Compose networks prevent Internet egress and isolate the untrusted client, the private origin path, and the SMTP sink.
 
-**Edge:** Postfix public SMTP listener, explicit relay domains, origin next-hop, origin-only trusted outbound path, persistent queue, and health checks.
+The Compose private network validates the trust boundary in a local container lab. It does not run WireGuard or prove CGNAT traversal. The actual tunnel and network path are Phase 3 gates.
 
-**Origin:** Stalwart persistent data, local domains/accounts, trusted edge delivery, outbound relay through edge, submission/IMAP/HTTPS, and per-domain DKIM.
+## Next milestone: Phase 3 real edge and CGNAT origin
 
-**Tunnel:** WireGuard point-to-point; no inbound requirement at a CGNAT origin.
-
-**Client proxy:** L4 forwarding; TLS remains at Stalwart unless an ADR supersedes that decision.
-
-### Phase 2 acceptance criteria
-
-- no real credentials/private keys;
-- local inbound/outbound relay is deny-by-default and automated no-open-relay tests pass;
-- two example domains work independently through one stack;
-- tunnel behavior works without unsolicited inbound connectivity to the origin;
-- Compose and service configuration validate without production resources;
-- documentation describes the tested behavior accurately.
+Provision a real VPS edge, verify public IPv4 and TCP/25 policy, establish WireGuard from the private origin, configure host firewall rules, and add tunnel health checks. Do not change DNS until the production gates pass.
 
 ## Deferred choices
 
-Observability stack, backup vendor/tool, automatic DNS provider integration, optional webmail, secondary MX/HA, and CLI language remain deferred.
+Monitoring stack, backup vendor/tooling, automatic DNS provider integration, webmail, secondary MX/HA, and a production provisioning CLI remain deferred.
 
 ## Production gate
 
-No live MX change until external TCP/25, outbound TCP/25, PTR+forward DNS, no-open-relay, TLS, queue/retry, SPF/DKIM/DMARC, backup+restore rehearsal, and exposed-port/secret review all pass.
+No live MX change until public SMTP reachability, outbound delivery, PTR/forward DNS, no-open-relay, production TLS, queue/retry, SPF/DKIM/DMARC, backup and restore, and firewall/secret reviews pass.

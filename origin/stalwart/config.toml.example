@@ -1,4 +1,0 @@
-# Identity seed only. This is not a complete production Stalwart configuration.
-# Validate the full configuration against the selected Stalwart release in Phase 2.
-[server]
-hostname = "mail.mail.example.net"
