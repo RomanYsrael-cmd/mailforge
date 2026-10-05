@@ -46,6 +46,7 @@ REQUIRED_PATHS = (
     "edge/postfix/main.cf",
     "edge/postfix/main.cf.template",
     "edge/postfix/docker-entrypoint.sh",
+    "edge/postfix/fix-queue-owner.sh",
     "edge/proxy/README.md",
     "edge/proxy/haproxy.cfg",
     "lab/sink/Dockerfile",

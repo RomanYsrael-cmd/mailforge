@@ -202,7 +202,7 @@ def generate_private_key(path: Path, openssl: str | None = None) -> None:
         pass
 
 
-def _host_uid_gid() -> tuple[str, str]:
+def host_uid_gid() -> tuple[str, str]:
     if os.name == "nt":
         return "2000", "2000"
     return str(os.getuid()), str(os.getgid())
@@ -234,7 +234,7 @@ def write_runtime(secrets_data: dict[str, Any], network_values: dict[str, str]) 
         0o644,
     )
 
-    uid, gid = _host_uid_gid()
+    uid, gid = host_uid_gid()
     compose_values = {
         "MAILFORGE_DATA_ROOT": str(STATE.resolve()).replace("\\", "/"),
         "MAILFORGE_LAB_UID": uid,

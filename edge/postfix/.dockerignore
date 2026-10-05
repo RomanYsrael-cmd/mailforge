@@ -3,3 +3,4 @@
 !main.cf
 !main.cf.template
 !docker-entrypoint.sh
+!fix-queue-owner.sh

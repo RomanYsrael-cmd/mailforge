@@ -110,7 +110,7 @@ def prepare(*, fresh: bool = False, openssl: str | None = None) -> dict[str, obj
     _safe_state_path()
     if fresh and STATE.exists():
         if (RUNTIME / "compose.env").exists():
-            run(["down", "--remove-orphans"])
+            down()
         shutil.rmtree(_safe_state_path())
     return prepare_state(openssl=openssl, fresh_credentials=fresh)
 
@@ -171,6 +171,15 @@ def up(*, fresh: bool = False, openssl: str | None = None) -> None:
 def down(*, remove_state: bool = False) -> None:
     _safe_state_path()
     if RUNTIME.exists() and (RUNTIME / "compose.env").exists():
+        containers = run(["ps", "--all", "-q", "edge-postfix"], capture=True)
+        if (containers.stdout or "").strip():
+            run(["stop", "edge-postfix"])
+            run(
+                [
+                    "run", "--rm", "--no-deps", "-T", "--user", "0:0",
+                    "--entrypoint", "/usr/local/bin/mailforge-fix-queue-owner", "edge-postfix",
+                ]
+            )
         run(["down", "--remove-orphans"])
     if remove_state and STATE.exists():
         shutil.rmtree(_safe_state_path())

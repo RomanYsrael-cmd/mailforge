@@ -9,7 +9,8 @@ RUN apt-get update \
 
 COPY main.cf /etc/postfix/main.cf
 COPY docker-entrypoint.sh /usr/local/bin/mailforge-postfix-entrypoint
-RUN chmod 0755 /usr/local/bin/mailforge-postfix-entrypoint
+COPY fix-queue-owner.sh /usr/local/bin/mailforge-fix-queue-owner
+RUN chmod 0755 /usr/local/bin/mailforge-postfix-entrypoint /usr/local/bin/mailforge-fix-queue-owner
 
 # Without generated Phase 2 maps the image keeps the closed Phase 1 main.cf.
 ENTRYPOINT ["/usr/local/bin/mailforge-postfix-entrypoint"]

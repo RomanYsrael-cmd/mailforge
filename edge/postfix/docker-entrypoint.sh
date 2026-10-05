@@ -16,26 +16,7 @@ if [ -r "$source_config" ] && [ -d "$source_maps" ]; then
     if [ -x /usr/sbin/rsyslogd ]; then
         rsyslogd
     fi
-    postfix start-fg &
-    postfix_pid=$!
-    return_queue_ownership() {
-        chown -R "${MAILFORGE_LAB_UID:-0}:${MAILFORGE_LAB_GID:-0}" /var/spool/postfix 2>/dev/null || true
-    }
-    shutdown_postfix() {
-        trap - TERM INT
-        kill -TERM "$postfix_pid" 2>/dev/null || true
-        wait "$postfix_pid" 2>/dev/null || true
-        return_queue_ownership
-        exit 0
-    }
-    trap shutdown_postfix TERM INT
-    if wait "$postfix_pid"; then
-        status=0
-    else
-        status=$?
-    fi
-    return_queue_ownership
-    exit "$status"
+    exec postfix start-fg
 fi
 
 # Keep the Phase 1 image default closed when runtime-generated lab maps are absent.
