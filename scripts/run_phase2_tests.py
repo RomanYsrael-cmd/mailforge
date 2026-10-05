@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import re
+import subprocess
 import sys
 import time
 import uuid
@@ -12,7 +13,7 @@ from email import policy
 from email.parser import BytesParser
 from pathlib import Path
 
-from lab import ROOT, STATE, run, wait_healthy
+from lab import ROOT, STATE, compose_args, run, wait_healthy
 
 
 def protocol(*arguments: str) -> str:
@@ -102,10 +103,22 @@ def check_postfix() -> None:
         ("relay_recipients", "unknown@example.com", ""),
         ("transport", "example.org", "smtp:[172.29.240.10]:25"),
     ):
-        value = run(
-            ["exec", "-T", "edge-postfix", "postmap", "-q", key, f"hash:/etc/postfix/generated/{map_name}"],
-            capture=True,
-        ).stdout.strip()
+        command = compose_args() + [
+            "exec", "-T", "edge-postfix", "postmap", "-q", key,
+            f"hash:/etc/postfix/generated/{map_name}",
+        ]
+        result = subprocess.run(
+            command,
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        value = result.stdout.strip()
+        missing_key = expected == "" and result.returncode == 1 and not result.stderr.strip()
+        if result.returncode != 0 and not missing_key:
+            detail = result.stderr.strip() or result.stdout.strip()
+            raise RuntimeError(f"Command failed ({result.returncode}): {' '.join(command)}\n{detail}")
         if value != expected:
             raise AssertionError(f"Postfix map {map_name} {key!r}: expected {expected!r}, got {value!r}")
     print("PASS: Postfix policy, fixture-derived maps, origin /32 trust, and sink route.")
