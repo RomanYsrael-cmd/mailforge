@@ -120,8 +120,10 @@ services:
   stalwart-cli:
     image: ghcr.io/stalwartlabs/cli:1.0.13
     profiles: [lab-tools]
-    user: "0:0"
+    user: "${MAILFORGE_LAB_UID:-1000}:${MAILFORGE_LAB_GID:-1000}"
     environment:
+      HOME: /tmp
+      XDG_CACHE_HOME: /tmp/.cache
       STALWART_URL: http://origin-stalwart:8080
       STALWART_USER: ${STALWART_USER:-}
       STALWART_PASSWORD: ${STALWART_PASSWORD:-}
