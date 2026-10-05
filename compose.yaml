@@ -7,6 +7,9 @@ services:
       context: ./edge/postfix
     profiles: [lab]
     hostname: mx1.mail.example.net
+    environment:
+      MAILFORGE_LAB_UID: ${MAILFORGE_LAB_UID:-2000}
+      MAILFORGE_LAB_GID: ${MAILFORGE_LAB_GID:-2000}
     restart: unless-stopped
     depends_on:
       lab-sink:
@@ -117,6 +120,7 @@ services:
   stalwart-cli:
     image: ghcr.io/stalwartlabs/cli:1.0.13
     profiles: [lab-tools]
+    user: "${MAILFORGE_LAB_UID:-1000}:${MAILFORGE_LAB_GID:-1000}"
     environment:
       STALWART_URL: http://origin-stalwart:8080
       STALWART_USER: ${STALWART_USER:-}
