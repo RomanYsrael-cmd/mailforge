@@ -1,7 +1,9 @@
-# Postfix edge scaffold
+# Postfix edge
 
-Postfix will own public server-to-server SMTP on TCP/25 and its delivery queue. It will not store user mailboxes. The queue has a separate persistent mount in `compose.yaml`.
+Postfix is the Phase 2 SMTP transport edge. It has no mailbox database. The generated lab configuration receives untrusted SMTP on port 25, accepts only fixture domains and recipients, routes hosted mail to the fixed Stalwart address, and trusts only that one origin address for remote relay.
 
-The Phase 1 `main.cf` is a deliberately closed baseline: there are no hosted relay domains, only loopback is trusted, and `smtpd_relay_restrictions` rejects unauthenticated destinations. It cannot relay arbitrary Internet mail. Do not publish its port or treat this as a working mail path.
+The generated runtime maps are derived from the same examples/domains JSON fixtures used to provision Stalwart. main.cf remains the closed Phase 1 default; main.cf.template is used only when python scripts/lab.py up has prepared ignored runtime files.
 
-Phase 2 will add an explicit hosted-domain transport map, origin next hop over WireGuard, and the narrowly trusted origin outbound path, with automated open-relay tests. Any relay-policy change must keep deny-by-default behavior.
+All outbound Postfix mail is directed to lab-sink:2525. The sink is attached to a separate internal-only Docker network. The lab networks are internal, and no service publishes a host port, so the lab has no Internet SMTP route.
+
+Relay policy uses permit_mynetworks, reject_unauth_destination with a single Stalwart /32 in mynetworks. Unknown hosted recipients are checked against a generated relay_recipient_maps database. The external client is not trusted and cannot relay to arbitrary domains.

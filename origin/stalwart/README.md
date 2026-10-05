@@ -1,7 +1,11 @@
-# Stalwart origin scaffold
+# Stalwart origin
 
-Stalwart is the single source of truth for hosted domains, users, mailboxes, aliases, per-domain DKIM, and message storage. MailForge will not add a second domain registry or mailbox database.
+Stalwart is the single source of truth for hosted domains, users, mailboxes, aliases, per-domain DKIM, and message storage. The Phase 2 lab pins stalwartlabs/stalwart:v0.16.24 and the official management CLI image ghcr.io/stalwartlabs/cli:1.0.13.
 
-`config.toml.example` is an identity seed, not a complete server configuration. The `compose.yaml` scaffold reserves `${MAILFORGE_DATA_ROOT}/stalwart/config` for configuration and `${MAILFORGE_DATA_ROOT}/stalwart/data` for persistent application data. Stalwart runs as UID 2000 in the upstream container; provision writable storage with the correct ownership on Linux.
+Stalwart v0.16 uses config.json for the datastore and JMAP objects for other configuration. The example startup file config.json.example contains a single RocksDb DataStore with data stored under /var/lib/stalwart. The old TOML identity seed is no longer used.
 
-The container is opt-in through the `local-scaffold` profile, is attached to an internal network, and publishes no host ports. Production hostname, TLS, domain onboarding, accounts, DKIM keys, storage tuning, backup, and network bindings are deferred to later milestones. Never store generated credentials or private keys in this repository.
+python scripts/lab.py up creates disposable mailbox credentials and DKIM keys under ignored var/mailforge/runtime, starts a recovery-mode instance, applies domains/accounts/aliases/listeners/routes/signatures through the versioned CLI, removes the recovery administrator environment, and restarts in normal mode. Provisioning is idempotent. The admin@example.com fixture account has an Admin role only in the lab.
+
+The normal management listener binds to the Stalwart private lab address on port 8080. It is not routed through HAProxy. Client HTTPS, SMTP submission, and IMAPS are forwarded in TCP mode and TLS terminates at Stalwart. The lab certificate may be self-signed.
+
+The container's RocksDB data is persistent at var/mailforge/stalwart/data. Do not put generated passwords, recovery credentials, or DKIM private keys in Git. The Compose profile is lab and publishes no host ports.

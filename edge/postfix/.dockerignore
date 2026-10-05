@@ -1,3 +1,5 @@
 **
 !Dockerfile
 !main.cf
+!main.cf.template
+!docker-entrypoint.sh

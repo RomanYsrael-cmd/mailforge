@@ -1,0 +1,24 @@
+# Phase 2 lab Postfix policy. Domain and recipient maps come from the shared fixtures.
+compatibility_level = 3.6
+myhostname = mx1.mail.example.net
+mydomain = mail.example.net
+myorigin = $myhostname
+inet_interfaces = all
+inet_protocols = ipv4
+mydestination = $myhostname, localhost.$mydomain, localhost
+mynetworks = 127.0.0.0/8 [::1]/128 @LAB_ORIGIN_IP@/32
+relay_domains = hash:/etc/postfix/generated/relay_domains
+relay_recipient_maps = hash:/etc/postfix/generated/relay_recipients
+transport_maps = hash:/etc/postfix/generated/transport
+relayhost = [lab-sink]:2525
+smtpd_relay_restrictions = permit_mynetworks, reject_unauth_destination
+smtpd_recipient_restrictions = reject_unlisted_recipient
+smtpd_reject_unlisted_recipient = yes
+smtpd_helo_required = yes
+disable_vrfy_command = yes
+smtpd_banner = $myhostname ESMTP MailForge lab
+maximal_queue_lifetime = 5d
+queue_run_delay = 2s
+minimal_backoff_time = 5s
+maximal_backoff_time = 20s
+syslog_name = mailforge/postfix

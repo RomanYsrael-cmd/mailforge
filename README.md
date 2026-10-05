@@ -1,81 +1,51 @@
 # MailForge
 
-MailForge is a reusable, self-hosted, multi-domain email platform designed for operators whose mailbox server may live behind CGNAT.
+MailForge is a reusable, multi-domain email platform designed for operators whose mailbox origin may live behind CGNAT.
 
-> **Status:** Phase 0 documentation is complete and Phase 1 repository/local scaffolding is implemented. The Internet mail path is not production-ready. No VPS deployment or DNS/mail cutover has started.
+> Status: Phase 0 documentation, Phase 1 scaffold, and Phase 2 isolated local mail path are implemented. No production deployment, live domain migration, or DNS cutover has started. Phase 3 is next.
 
-MailForge separates the **public Internet mail edge** from the **private mailbox origin**:
+## Phase 2 local lab
 
-- **Postfix edge MTA** will own Internet-facing SMTP on TCP/25, queueing, and outbound delivery.
-- **WireGuard** will provide private transport between the public edge and the origin.
-- **Stalwart Mail Server** is the authoritative source for domains, accounts, mailboxes, aliases, DKIM, and message storage.
-- **Layer-4 proxying** will forward client protocols to Stalwart, where TLS terminates.
+The lab proves the mail path with real Postfix, Stalwart, SMTP, IMAP, and HAProxy traffic:
 
-The repository is domain-neutral. One deployment can serve `example.com`, `example.org`, and future domains without duplicating the mail infrastructure.
+- Untrusted SMTP reaches Postfix on port 25. Postfix accepts only the configured example domains and recipients, and queues mail while Stalwart is unavailable.
+- Stalwart is authoritative for domains, accounts, aliases, mailboxes, message state, and per-domain DKIM.
+- Authenticated submission reaches Stalwart through HAProxy. HAProxy forwards TCP only, and TLS terminates at Stalwart.
+- Stalwart sends remote-recipient mail through the trusted Postfix edge. Postfix sends all lab outbound mail to a local SMTP sink.
+- Domain and recipient maps are generated from the same examples/domains JSON fixtures used to provision Stalwart.
 
-## Phase 1 scaffold
+The three Docker networks are internal and no service publishes a host port. They separate untrusted clients, the edge-to-origin path, and the sink. The private Compose network represents the edge/origin trust boundary; Phase 2 does not run a WireGuard tunnel or validate a tunnel handshake. Phase 3 must prove WireGuard connectivity from an origin behind CGNAT.
 
-Phase 1 adds edge/origin/tunnel boundaries, safe domain-neutral examples, a local Compose topology, secret protections, validation tooling, tests, and CI. Compose services use the opt-in `local-scaffold` profile, an internal Docker network, and no published host ports. The Postfix baseline has no relay domains and rejects unauthenticated relay. These files are not a complete mail service and must not be deployed as production configuration.
+Stalwart is pinned to v0.16.24 and provisioned with the versioned Stalwart CLI v1.0.13. The old TOML identity seed has been replaced with the v0.16 JSON datastore configuration and management API objects.
 
-The current milestone does not include a working Internet SMTP path, real WireGuard keys, production credentials, live domains, server provisioning, DNS changes, or mail-provider changes. The next milestone is Phase 2: a local two-node mail path.
+## Run the lab
 
-## Validate locally
+Prerequisites are Docker Compose, Python 3, and OpenSSL. OpenSSL generates disposable 2048-bit DKIM test keys. Set MAILFORGE_OPENSSL or pass --openssl if it is not on PATH. Set MAILFORGE_DOCKER if the Docker CLI is not on PATH.
 
-From the repository root:
+    python scripts/validate_config.py --env-file .env.example
+    python -m unittest discover -s tests -p 'test_*.py' -v
+    python scripts/lab.py up
+    python scripts/run_phase2_tests.py
+    python scripts/lab.py down
 
-```sh
-python scripts/validate_config.py --env-file .env.example
-python -m unittest discover -s tests -p 'test_*.py' -v
-docker compose --profile local-scaffold config --quiet
-```
+The tests run SMTP and IMAP clients inside disposable containers. They cover both example domains, aliases, unknown recipient/domain rejection, untrusted relay rejection, authenticated outbound delivery, DKIM headers, origin-down queueing and automatic retry, and TLS passthrough on ports 443, 465, 587, and 993.
 
-For a deployment-specific configuration, copy `.env.example` to an untracked `.env` and validate it with `python scripts/validate_config.py --env-file .env`. Production validation rejects example hostnames/domains and TEST-NET addresses. Never put secrets in `.env.example` or Git.
+Runtime credentials, DKIM keys, Stalwart RocksDB data, Postfix queue files, and sink messages are created under ignored var/mailforge/. The random test credentials are stored there for repeatable runs. The lab uses reserved example domains and has no Internet egress through its Docker networks.
 
-`docker compose ... config` only renders the Compose model. Do not start the services until the Phase 2 configuration and tests are complete.
+Use python scripts/lab.py reset to stop the lab and remove only the generated var/mailforge/ state. This deletes its test mail, queue, credentials, and generated DKIM keys.
 
-## High-level architecture
+## Architecture
 
-```mermaid
-flowchart LR
-    Internet((Internet))
-    Edge["Public Edge VPS\nPostfix + L4 proxy\nPublic IPv4 + PTR"]
-    WG["WireGuard tunnel"]
-    Origin["Private Origin\nStalwart\nMailbox + identity + DKIM"]
-    Storage[(Persistent mail storage)]
+Postfix is the transport edge. Stalwart owns users, mailboxes, aliases, message storage, and DKIM. HAProxy is TCP-mode only. The local SMTP sink receives all simulated remote mail.
 
-    Internet -->|SMTP 25| Edge
-    Internet -->|HTTPS / Submission / IMAPS| Edge
-    Edge <--> WG
-    WG <--> Origin
-    Origin --> Storage
-    Origin -->|Outbound relay| Edge
-    Edge -->|SMTP 25| Internet
-```
+Production remains out of scope: no real VPS, public TCP/25, WireGuard deployment, real domains, credentials, DNS records, firewall rules, current mail provider, or live mail has been touched. Do not treat the Phase 2 defaults or self-signed lab certificate as production configuration.
 
-The edge is replaceable transport infrastructure. The origin is the authoritative home of mailbox state.
-
-## Documentation
-
-Start with [docs/INDEX.md](docs/INDEX.md). Important documents include:
-
-- [Project charter](docs/PROJECT_CHARTER.md)
-- [Requirements](docs/REQUIREMENTS.md)
-- [Architecture](docs/ARCHITECTURE.md)
-- [Configuration model](docs/CONFIGURATION_MODEL.md)
-- [Networking](docs/NETWORKING.md)
-- [DNS and deliverability](docs/DNS_AND_DELIVERABILITY.md)
-- [Security model](docs/SECURITY_MODEL.md)
-- [Operations](docs/OPERATIONS.md)
-- [Backup and recovery](docs/BACKUP_AND_RECOVERY.md)
-- [Test strategy](docs/TEST_STRATEGY.md)
-- [Roadmap](docs/ROADMAP.md)
-- [Implementation plan](docs/IMPLEMENTATION_PLAN.md)
-- [Architecture Decision Records](docs/adr/README.md)
+See [docs/INDEX.md](docs/INDEX.md), [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), [docs/NETWORKING.md](docs/NETWORKING.md), [docs/SECURITY_MODEL.md](docs/SECURITY_MODEL.md), [docs/OPERATIONS.md](docs/OPERATIONS.md), and [docs/TEST_STRATEGY.md](docs/TEST_STRATEGY.md).
 
 ## Non-goals for v1
 
-MailForge v1 is not intended to be a commercial multi-tenant SaaS, a bulk-mail platform, a newsletter sender, an anonymous relay, or a replacement for domain registration/DNS hosting.
+MailForge is not a commercial multi-tenant SaaS, bulk-mail platform, newsletter sender, anonymous relay, or replacement for domain registration and DNS hosting.
 
 ## License
 
-Apache License 2.0. See [LICENSE](LICENSE).
+Apache License 2.0. See LICENSE.

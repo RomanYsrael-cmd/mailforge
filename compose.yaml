@@ -1,53 +1,152 @@
 name: mailforge
 
-# These containers are an implementation scaffold, not a mail service.
-# The profile is opt-in; no ports are published to the host in Phase 1.
 services:
   edge-postfix:
-    image: mailforge/edge-postfix:phase1-scaffold
-    build: ./edge/postfix
-    profiles: [local-scaffold]
-    hostname: ${MAILFORGE_EDGE_HOSTNAME:-mx1.mail.example.net}
-    expose:
-      - "25"
+    image: mailforge/edge-postfix:phase2-lab
+    build:
+      context: ./edge/postfix
+    profiles: [lab]
+    hostname: mx1.mail.example.net
+    restart: unless-stopped
+    depends_on:
+      lab-sink:
+        condition: service_healthy
     volumes:
       - "${MAILFORGE_DATA_ROOT:-./var/mailforge}/postfix-queue:/var/spool/postfix"
+      - "${MAILFORGE_DATA_ROOT:-./var/mailforge}/runtime/generated/postfix/main.cf:/run/mailforge/postfix/main.cf:ro"
+      - "${MAILFORGE_DATA_ROOT:-./var/mailforge}/runtime/generated/postfix:/run/mailforge/postfix/maps:ro"
     networks:
-      - mailforge-lab
+      untrusted:
+        ipv4_address: ${MAILFORGE_LAB_EDGE_PUBLIC_IP:-172.28.240.2}
+      private:
+        ipv4_address: ${MAILFORGE_LAB_EDGE_PRIVATE_IP:-172.29.240.2}
+      sinkonly:
+        ipv4_address: ${MAILFORGE_LAB_EDGE_SINK_IP:-172.30.240.2}
+    healthcheck:
+      test: ["CMD-SHELL", "postfix status >/dev/null 2>&1 && nc -z 127.0.0.1 25"]
+      interval: 3s
+      timeout: 2s
+      retries: 30
+      start_period: 5s
 
   edge-proxy:
     image: haproxy:3.4.4-alpine
-    profiles: [local-scaffold]
+    profiles: [lab]
+    hostname: proxy.mail.example.net
+    restart: unless-stopped
     depends_on:
-      - origin-stalwart
+      origin-stalwart:
+        condition: service_healthy
     volumes:
       - ./edge/proxy/haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
-    expose:
-      - "443"
-      - "465"
-      - "587"
-      - "993"
     networks:
-      - mailforge-lab
+      untrusted: {}
+      private:
+        ipv4_address: ${MAILFORGE_LAB_PROXY_PRIVATE_IP:-172.29.240.3}
+    healthcheck:
+      test: ["CMD", "haproxy", "-c", "-f", "/usr/local/etc/haproxy/haproxy.cfg"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
 
   origin-stalwart:
-    image: stalwartlabs/stalwart:v0.16
-    profiles: [local-scaffold]
-    hostname: ${MAILFORGE_CLIENT_HOSTNAME:-mail.mail.example.net}
+    image: stalwartlabs/stalwart:v0.16.24
+    profiles: [lab]
+    hostname: mail.mail.example.net
+    user: "${MAILFORGE_LAB_UID:-2000}:${MAILFORGE_LAB_GID:-2000}"
+    restart: unless-stopped
     volumes:
-      - "${MAILFORGE_DATA_ROOT:-./var/mailforge}/stalwart/config:/etc/stalwart"
+      - "${MAILFORGE_DATA_ROOT:-./var/mailforge}/runtime/generated/stalwart/config.json:/etc/stalwart/config.json:ro"
       - "${MAILFORGE_DATA_ROOT:-./var/mailforge}/stalwart/data:/var/lib/stalwart"
-    expose:
-      - "25"
-      - "443"
-      - "465"
-      - "587"
-      - "993"
     networks:
-      - mailforge-lab
+      private:
+        ipv4_address: ${MAILFORGE_LAB_ORIGIN_IP:-172.29.240.10}
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsSk https://127.0.0.1:443/healthz/live >/dev/null || curl -fsS http://127.0.0.1:8080/healthz/live >/dev/null"]
+      interval: 3s
+      timeout: 3s
+      retries: 40
+      start_period: 5s
+
+  lab-sink:
+    image: mailforge/lab-smtp-sink:phase2
+    build:
+      context: ./lab/sink
+    profiles: [lab]
+    hostname: lab-sink
+    user: "${MAILFORGE_LAB_UID:-1000}:${MAILFORGE_LAB_GID:-1000}"
+    restart: unless-stopped
+    volumes:
+      - "${MAILFORGE_DATA_ROOT:-./var/mailforge}/sink:/var/lib/mailforge/sink"
+    networks:
+      sinkonly:
+        ipv4_address: ${MAILFORGE_LAB_SINK_IP:-172.30.240.10}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import socket; s=socket.create_connection(('127.0.0.1',2525),2); s.close()"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  smtp-test-client:
+    image: python:3.13.7-alpine3.22
+    profiles: [lab-tools]
+    entrypoint: ["python", "/opt/mailforge/lab_client.py"]
+    environment:
+      MAILFORGE_TEST_ADMIN_USERNAME: ${MAILFORGE_TEST_ADMIN_USERNAME:-}
+      MAILFORGE_TEST_ADMIN_PASSWORD: ${MAILFORGE_TEST_ADMIN_PASSWORD:-}
+      MAILFORGE_TEST_SUPPORT_USERNAME: ${MAILFORGE_TEST_SUPPORT_USERNAME:-}
+      MAILFORGE_TEST_SUPPORT_PASSWORD: ${MAILFORGE_TEST_SUPPORT_PASSWORD:-}
+      MAILFORGE_TEST_POSTMASTER_COM_USERNAME: ${MAILFORGE_TEST_POSTMASTER_COM_USERNAME:-}
+      MAILFORGE_TEST_POSTMASTER_COM_PASSWORD: ${MAILFORGE_TEST_POSTMASTER_COM_PASSWORD:-}
+      MAILFORGE_TEST_POSTMASTER_ORG_USERNAME: ${MAILFORGE_TEST_POSTMASTER_ORG_USERNAME:-}
+      MAILFORGE_TEST_POSTMASTER_ORG_PASSWORD: ${MAILFORGE_TEST_POSTMASTER_ORG_PASSWORD:-}
+    volumes:
+      - ./tests/lab_client.py:/opt/mailforge/lab_client.py:ro
+    networks:
+      - untrusted
+
+  private-tls-probe:
+    image: python:3.13.7-alpine3.22
+    profiles: [lab-tools]
+    entrypoint: ["python", "/opt/mailforge/lab_client.py"]
+    volumes:
+      - ./tests/lab_client.py:/opt/mailforge/lab_client.py:ro
+    networks:
+      - private
+
+  stalwart-cli:
+    image: ghcr.io/stalwartlabs/cli:1.0.13
+    profiles: [lab-tools]
+    environment:
+      STALWART_URL: http://origin-stalwart:8080
+      STALWART_USER: ${STALWART_USER:-}
+      STALWART_PASSWORD: ${STALWART_PASSWORD:-}
+    volumes:
+      - "${MAILFORGE_DATA_ROOT:-./var/mailforge}/runtime/provision:/work:ro"
+    networks:
+      - private
 
 networks:
-  mailforge-lab:
-    name: mailforge-lab
+  untrusted:
+    name: mailforge-lab-untrusted
     driver: bridge
     internal: true
+    ipam:
+      config:
+        - subnet: ${MAILFORGE_LAB_PUBLIC_SUBNET:-172.28.240.0/24}
+
+  private:
+    name: mailforge-lab-private
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: ${MAILFORGE_LAB_PRIVATE_SUBNET:-172.29.240.0/24}
+
+  sinkonly:
+    name: mailforge-lab-sinkonly
+    driver: bridge
+    internal: true
+    ipam:
+      config:
+        - subnet: ${MAILFORGE_LAB_SINK_SUBNET:-172.30.240.0/24}

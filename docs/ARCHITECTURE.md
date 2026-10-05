@@ -2,101 +2,71 @@
 
 ## Context
 
-MailForge separates two concerns: the Internet requires a publicly reachable SMTP identity, while the operator may want authoritative mailbox state on a private origin behind CGNAT.
+MailForge separates public SMTP transport from authoritative mailbox state. The production origin may sit behind CGNAT, so the intended edge/origin transport is WireGuard with the origin maintaining outbound connectivity.
 
-## Components
+## Phase 2 lab components
 
-### Public edge VPS
+### Postfix edge
 
-Responsibilities:
+Postfix accepts untrusted SMTP on port 25 for configured hosted domains, validates recipients using generated maps, queues messages while Stalwart is unavailable, and routes hosted mail to Stalwart. It trusts only the origin's fixed private /32 for outbound relay. All relayed remote mail goes to the lab SMTP sink.
 
-- stable public IPv4 and PTR identity;
-- receive Internet SMTP on TCP/25;
-- enforce relay-domain policy;
-- queue mail when origin is unavailable;
-- deliver outbound mail to remote MX hosts;
-- provide L4 forwarding for selected client protocols;
-- expose only documented public ports.
+### Stalwart origin
 
-Planned software: Postfix, an L4 proxy such as HAProxy, and WireGuard. The edge does **not** own user mailbox state.
+Stalwart owns domains, accounts, aliases, mailboxes, message state, authenticated submission, IMAP/JMAP, and DKIM. The Phase 2 lab pins v0.16.24 and stores its RocksDB data under ignored var/mailforge/stalwart/data.
 
-### Private origin
+### HAProxy
 
-Responsibilities:
+HAProxy forwards client protocol TCP streams on ports 443, 465, 587, and 993. It does not terminate TLS; Stalwart presents the certificate and handles client authentication.
 
-- authoritative local-domain configuration;
-- users, mailboxes, aliases, quotas, and message state;
-- authenticated submission;
-- IMAP/JMAP and management UI/API;
-- DKIM key management/signing;
-- durable mailbox storage and backup source of truth.
+### Lab SMTP sink
 
-Planned software: Stalwart Mail Server.
+The dependency-free local sink stores simulated remote messages under ignored var/mailforge/sink. It is attached only to the sink-only internal network. It has no path to the Internet.
 
-### WireGuard transport
+## Phase 2 network boundary
 
-A point-to-point encrypted network joins edge and origin. The origin maintains outbound connectivity toward the public edge, so CGNAT is not a blocker.
+The lab has three Docker networks, all marked internal, and no host-published ports:
 
-### DNS
+- untrusted: test client, Postfix, and HAProxy;
+- private: Postfix, HAProxy, Stalwart, management CLI, and a TLS probe;
+- sink-only: Postfix and the SMTP sink.
 
-External DNS advertises MX, A/AAAA where applicable, PTR/rDNS through the VPS provider, SPF, DKIM, DMARC, and optional MTA-STS/TLS-RPT/autodiscovery.
+Stalwart uses a fixed private address. Postfix trusts only that address as its relay client. The test client is not attached to the private or sink network. Stalwart is not attached to the sink network.
 
-## Recommended hostnames
-
-Prefer infrastructure-neutral names such as:
-
-- `mx1.mail.example.net` — SMTP edge identity and PTR target;
-- `mail.mail.example.net` — client access hostname.
-
-Hosted domains such as `example.com` and `example.org` point to that shared infrastructure. A hosted domain can temporarily provide infrastructure names if no neutral domain exists yet.
+This container topology verifies the routing and trust boundaries but is not a WireGuard implementation. It does not prove encryption, peer-key exchange, CGNAT traversal, or host firewall behavior. Phase 3 must prove those conditions on real edge/origin hosts.
 
 ## Inbound flow
 
-```text
-remote MTA -> TCP/25 -> Postfix edge -> queued relay over WireGuard -> Stalwart -> mailbox
-```
+    untrusted SMTP client -> Postfix port 25 -> fixture domain/recipient check
+        -> fixed private Stalwart address -> correct mailbox
 
 ## Outbound flow
 
-```text
-client/app -> authenticated Stalwart submission -> policy + DKIM -> Postfix edge -> recipient MX
-```
+    authenticated user -> HAProxy TCP/587 -> Stalwart DKIM and queue
+        -> trusted Postfix edge -> local SMTP sink
 
-The edge public IP is the Internet-visible sender. SPF authorizes that IP; DKIM aligns to the hosted sender domain.
+## Production target
 
-## Client flow
-
-Selected client ports are forwarded in L4/TCP mode across WireGuard and terminate at Stalwart, keeping TLS and authentication centralized at the origin.
-
-Target public endpoints: 443, 465, 587, and 993. POP3 is not in the default v1 profile.
+In production, public SMTP/25 terminates at Postfix. Hosted mail crosses WireGuard to Stalwart. Client protocol TLS terminates at Stalwart through L4 forwarding. Postfix relays remote mail to the Internet only after production egress and relay policy are configured and reviewed.
 
 ## Failure behavior
 
-- **Origin unavailable:** edge queues mail; mailbox/client access unavailable; no accepted message should be silently discarded.
-- **Edge unavailable:** new Internet delivery fails temporarily, but mailbox state remains on origin.
-- **Tunnel unavailable:** behavior resembles origin outage; monitoring must distinguish tunnel from application failure.
-
-## Trust boundaries
-
-1. Internet → edge: untrusted.
-2. Edge → origin: infrastructure-authenticated over WireGuard, still least-privilege.
-3. User → origin: authenticated identity trust.
-4. Public Git repository → deployment: never a secret store.
-5. Backup target: sensitive trusted storage.
+- Origin unavailable: Postfix retains accepted hosted mail and retries after recovery.
+- Edge unavailable: origin mailbox state remains authoritative; new external delivery may be deferred by senders.
+- Tunnel unavailable in production: behavior resembles an origin outage; monitoring must distinguish tunnel from application failure.
 
 ## Data ownership
 
-- mailbox state: origin;
-- user/domain config: origin + backup;
-- queue: edge, transient;
+- mailbox state and domain/account config: Stalwart;
+- Postfix queue: edge transport, transient;
 - DNS: authoritative DNS provider;
 - private keys/secrets: deployment secret storage, never Git;
-- source/templates: Git.
+- source/templates: Git;
+- lab sink contents: disposable test evidence.
 
 ## References
 
-- https://stalw.art/docs/install/platform/docker/
-- https://stalw.art/docs/domains/
+- https://stalw.art/docs/configuration/
+- https://stalw.art/docs/management/cli/apply/
 - https://stalw.art/docs/mta/outbound/routing/
 - https://www.postfix.org/SMTPD_ACCESS_README.html
 - https://www.wireguard.com/quickstart/

@@ -1,5 +1,7 @@
-# L4 client proxy scaffold
+# L4 client proxy
 
-HAProxy forwards TCP/443, 465, 587, and 993 to the Stalwart service. The configuration uses `mode tcp`; it does not inspect or terminate TLS. Client TLS and certificates remain owned by Stalwart, as required by ADR-0006.
+HAProxy forwards TCP ports 443, 465, 587, and 993 to Stalwart. It uses mode tcp and does not inspect or terminate TLS. Client TLS and certificates remain owned by Stalwart, as required by ADR-0006.
 
-The backend hostname is resolved at runtime through Docker's embedded DNS, and `init-addr none` allows offline syntax validation before the Compose network exists. The proxy is attached only to the internal Compose network and has no host-published ports in Phase 1. Routing through WireGuard on real edge/origin hosts is planned for Phase 2. SMTP/25 is intentionally handled by Postfix, not by this proxy.
+The backend hostname is resolved at runtime through Docker's embedded DNS. A container probe compares Stalwart's direct and proxied certificate fingerprints for HTTPS, implicit TLS, and STARTTLS, and authenticated mail/IMAP tests use the proxy path.
+
+The proxy is attached to the untrusted and private internal lab networks and publishes no host ports. SMTP/25 is intentionally handled by Postfix, not by this proxy. In production, the private path will cross WireGuard; Phase 2's Compose network only emulates the routing boundary.

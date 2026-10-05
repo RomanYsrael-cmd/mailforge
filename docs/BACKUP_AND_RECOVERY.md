@@ -4,38 +4,32 @@
 
 A backup is valid only after restore is tested.
 
-## Must back up
+## Phase 2 lab state
 
-- Stalwart authoritative data stores;
-- mailbox/message data;
-- domain/account/alias config;
-- non-reproducible application config;
+Stalwart is the authoritative store. Its local RocksDB state is mounted at var/mailforge/stalwart/data. The startup config is generated under var/mailforge/runtime/generated/stalwart/config.json. Lab credentials and DKIM private keys also live in ignored runtime state.
+
+Postfix queue data under var/mailforge/postfix-queue is transient transport state. The local SMTP sink files under var/mailforge/sink are test evidence and can be discarded. The Phase 2 CI workflow removes all generated state after testing.
+
+## Production backup contents
+
+- Stalwart authoritative datastore and mailbox/message data;
+- domain/account/alias configuration;
+- non-reproducible application configuration;
 - continuity-critical certificate/account state;
 - recovery secrets through a separate secure mechanism.
 
-## Reconstruct from Git
-
-Compose/manifests, templates, scripts, documentation, and non-secret defaults.
-
-The edge queue is transient operational state, not authoritative mailbox storage.
-
-## Strategy
-
-Use frequent origin backups/snapshots, off-host encrypted copies, multiple restore points, and periodic restore drills. Exact tooling depends on the selected Stalwart storage backend and its consistency requirements.
+The edge queue is not authoritative mailbox storage. Reconstruct Compose manifests, templates, scripts, docs, and non-secret defaults from Git.
 
 ## Recovery order
 
-1. recover secrets/config needed for origin;
-2. recover Stalwart and mailbox data;
-3. verify local integrity;
-4. restore tunnel;
-5. restore edge mail path;
-6. confirm DNS/PTR;
-7. test inbound/outbound;
-8. monitor queue drain.
+1. Recover secrets/config needed for the origin.
+2. Restore Stalwart and mailbox data using the selected backend's consistency procedure.
+3. Verify local integrity and expected accounts/messages.
+4. Restore the tunnel.
+5. Restore the edge mail path.
+6. Confirm DNS/PTR only during an approved production recovery.
+7. Test inbound/outbound and monitor queue drain.
 
-## Restore test
-
-A restore passes only if an isolated restored origin starts, enumerates expected domains/users, accesses representative mailboxes/messages, has a valid DKIM continuity or rotation path, and passes service health checks.
+A restore passes only if an isolated restored origin starts, enumerates expected domains/users, accesses representative mailbox messages, has a DKIM continuity or rotation path, and passes service health checks.
 
 Do not commit backup passwords, encryption keys, or cloud credentials.

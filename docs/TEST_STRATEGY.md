@@ -1,47 +1,32 @@
 # Test Strategy
 
-Testing must prove MailForge is safe to expose, not merely that containers start.
+Testing must prove the mail path and relay boundaries, not merely that containers start.
 
-## Phase 1 checks
+## Phase 1 checks retained
 
-Current automated checks run without production resources and cover:
+CI continues to validate configuration values, example domains, image references, documentation links, private-key/token scans, Python tests, shell syntax, Compose rendering, HAProxy configuration, and the closed Postfix image default.
 
-- required/non-empty environment values, hostname/IP/CIDR syntax, production placeholder rejection, tunnel address collision, and explicit relay-domain rules;
-- domain example structure, independent mailboxes/aliases/DKIM selectors, and shared infrastructure;
-- image tag policy, expected repository paths, Markdown references, and obvious private-key/token material;
-- Python unit tests, shell syntax, rendered Compose configuration, HAProxy TCP configuration, and Postfix's deny-by-default relay settings.
+## Phase 2 container-backed checks
 
-The local Compose profile is isolated and has no published ports. Rendering Compose does not start containers.
+Run python scripts/lab.py ci for a fresh, disposable integration run. It builds the lab containers, starts Stalwart in recovery mode, provisions through the official CLI, restarts in normal mode, runs protocol tests, and tears the containers and generated state down in a finally block.
 
-## Later layers
+The integration suite uses SMTP/IMAP clients inside Compose and verifies:
 
-### Local integration
+- inbound delivery to example.com and example.org mailboxes and each domain's abuse alias;
+- rejection of unknown local parts, unknown domains, and untrusted remote relay recipients during SMTP;
+- exact-origin /32 Postfix trust, explicit fixture-derived relay domains/recipients/transports, and sink-only outbound route;
+- authenticated STARTTLS submission for both domains and delivery into the local SMTP sink;
+- DKIM-Signature domain and selector evidence for each domain;
+- an accepted Postfix queue item while Stalwart is stopped, then automatic delivery and queue drain after Stalwart recovers;
+- TLS certificate identity equality through HAProxy and directly at Stalwart on HTTPS 443, implicit TLS 465/993, and STARTTLS 587;
+- no host-published service ports and all lab networks marked internal.
 
-Phase 2 will simulate edge and origin and prove:
+These are actual container protocol flows. The suite does not mock Stalwart, Postfix, HAProxy, SMTP, or IMAP. It does not send mail to the Internet, query public DNS, use a VPS, or require GitHub secrets.
 
-- edge accepts only configured relay domains;
-- unauthorized relay is rejected;
-- Stalwart accepts trusted edge delivery;
-- outbound Stalwart mail relays through edge;
-- multiple domains remain independent;
-- client proxying reaches origin.
+## Queue failure test
 
-### Failure tests
+The test stops the origin, sends a valid hosted message through Postfix, and confirms the unique sender remains in Postfix's on-disk queue. It restarts Stalwart and waits for Postfix's scheduled retry; it does not force a manual queue flush. The lab retry window is shortened to keep CI bounded.
 
-Stop Stalwart and verify edge queues; restart and verify drain. Break WireGuard and verify defer/retry behavior. Restart edge and verify origin data unaffected.
+## Phase 3 and production gates
 
-### Security tests
-
-Before production: external open-relay test, TLS/hostname check, firewall scan, admin exposure review, default-credential check, repository secret scan, and brute-force/rate-limit assessment.
-
-### DNS/authentication tests
-
-Per domain: verify MX, FCrDNS/PTR, SPF, DKIM, DMARC, and outbound authentication headers.
-
-### Multi-domain acceptance
-
-The release is not reusable until two unrelated domains operate simultaneously with independent identities and DKIM/DNS policy.
-
-## CI
-
-Phase 1 CI validates docs/config/secrets and scaffold syntax. CI must not need production secrets. Later CI adds isolated integration tests; no test may rely on a production VPS, DNS, or real mail provider.
+The Compose private network does not implement WireGuard. Phase 3 must test actual key exchange, routes, service binding, firewall behavior, tunnel recovery, and queue behavior over the tunnel. Production acceptance later adds external SMTP reachability, certificate/name validation, DNS authentication, monitoring, and backup restore.

@@ -1,43 +1,37 @@
 # Security Model
 
-## Objectives
+## Objectives and trust boundaries
 
-Protect mailbox confidentiality/integrity, account credentials, signing keys, sending authority, infrastructure credentials, and backups.
+Protect mailbox data, account credentials, signing keys, sending authority, infrastructure credentials, and backups.
 
-Assume Internet scanning, credential stuffing, spam-relay probing, malicious mail content, compromised clients, a compromised edge, accidental secret commits, and operator mistakes.
+- Untrusted lab client to Postfix: hostile SMTP input.
+- Stalwart to Postfix: trusted only by the origin's fixed private /32.
+- Postfix to Stalwart: hosted delivery only over the private network.
+- Postfix to sink: only simulated outbound path.
+- Repository to deployment: public; never a secret store.
 
-## Trust boundaries
+The Compose networks are internal and no service publishes a host port. The test client is not attached to the private or sink networks. Stalwart is not attached to the sink network. The lab has no Internet egress path.
 
-- Internet → edge: hostile/untrusted.
-- Edge → origin: authenticated infrastructure link, but least privilege still applies.
-- User → mailbox: authenticated identity scope.
-- Repository → deployment: public; never a secret store.
-- Backup target: highly sensitive.
+## Relay policy
 
-## Secrets
+Postfix lists only fixture domains in relay_domains and only fixture addresses in relay_recipient_maps. Those maps are generated from the same JSON fixtures used by Stalwart provisioning. An untrusted client may deliver only to a listed hosted address. An arbitrary destination is rejected by reject_unauth_destination. The only trusted mynetworks entry beyond loopback is the fixed Stalwart /32. All accepted remote-recipient mail from Stalwart goes to the isolated SMTP sink.
 
-Never commit real `.env` files, private keys, passwords, API tokens, DNS credentials, backup credentials, TLS private material, WireGuard private keys, or DKIM private keys.
+## Secrets and test material
 
-The repository ignores local secret/config files, private-key extensions, runtime state, mail queues, mailbox data, backups, and logs. CI scans files for common PEM/SSH private-key markers, WireGuard key values, and obvious token patterns. These checks catch common accidents but do not replace code review or secret rotation.
+Never commit real .env files, mailbox/admin passwords, API tokens, TLS private material, WireGuard keys, or DKIM private keys. The local lab creates random account passwords, a temporary recovery credential, and 2048-bit DKIM keys under ignored var/mailforge/. The recovery credential is removed from the normal Stalwart container after provisioning. The secret scan checks tracked and unignored workspace files.
 
-A committed production secret is compromised even if later deleted from the latest revision: rotate first, then clean history if appropriate.
-
-## Authentication
-
-Use strong unique credentials. Prefer MFA for administration where supported. Administrative access should be more restricted than end-user mail access.
-
-## Open-relay prevention
-
-Relaying is allowed only when destination is a configured hosted domain going toward origin, or source is the trusted origin using the approved outbound path. Automated external open-relay testing is a production gate. The Phase 1 Postfix scaffold configures no hosted domains and rejects unauthenticated relay.
+The Phase 2 admin@example.com account has an Admin role only to run the isolated lab. It is randomly passworded and is not a production account.
 
 ## TLS and tunnel
 
-Client protocols require TLS. Edge-origin transport is protected by WireGuard. Internet SMTP uses normal opportunistic TLS behavior. Do not globally disable certificate validation to make deployment easier.
+HAProxy runs in TCP mode and does not terminate TLS. The test compares certificate fingerprints through HAProxy and directly at Stalwart, including SMTP STARTTLS. The lab's self-signed certificate is only test evidence; it does not establish production certificate validity.
+
+Phase 2 does not run WireGuard. Its private network emulates the routing boundary only. Production requires WireGuard, firewall rules, peer-key management, and tunnel-health checks in Phase 3.
 
 ## Host/container hardening
 
-Pin versions, minimize writable mounts/capabilities, avoid privileged containers without documented necessity, patch hosts, use firewall default-deny inbound, and avoid credential logging.
+Pin image versions, minimize writable mounts and capabilities, avoid privileged containers, and keep Postfix's relay trust narrow. The SMTP sink is a small standard-library server and is reachable only on the sink-only network.
 
-## Backup security
+## Backups
 
-Backups contain mailbox data and must be encrypted when stored outside a physically trusted boundary. Backup credentials/keys should not share the same single point of failure as the origin.
+Stalwart state is authoritative and sensitive. Protect backups with encryption and test restores. Postfix queue state is transient operational data; sink messages are disposable test evidence.

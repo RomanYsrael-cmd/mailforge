@@ -44,15 +44,25 @@ REQUIRED_PATHS = (
     "edge/postfix/.dockerignore",
     "edge/postfix/README.md",
     "edge/postfix/main.cf",
+    "edge/postfix/main.cf.template",
+    "edge/postfix/docker-entrypoint.sh",
     "edge/proxy/README.md",
     "edge/proxy/haproxy.cfg",
+    "lab/sink/Dockerfile",
+    "lab/sink/server.py",
     "origin/stalwart/README.md",
-    "origin/stalwart/config.toml.example",
+    "origin/stalwart/config.json.example",
     "wireguard/README.md",
     "wireguard/edge.conf.example",
     "wireguard/origin.conf.example",
     "scripts/validate-config.sh",
     "scripts/validate_config.py",
+    "scripts/lab_common.py",
+    "scripts/lab.py",
+    "scripts/stalwart_plan.py",
+    "scripts/provision_lab.py",
+    "scripts/run_phase2_tests.py",
+    "tests/lab_client.py",
     "tests/integration",
     "tests/security",
     "examples/domains",
@@ -322,6 +332,37 @@ def validate_image_pins(root: Path) -> list[str]:
     return errors
 
 
+def validate_phase2_lab(root: Path) -> list[str]:
+    errors: list[str] = []
+    compose_path = root / "compose.yaml"
+    postfix_path = root / "edge" / "postfix" / "main.cf.template"
+    if compose_path.is_file():
+        compose = compose_path.read_text(encoding="utf-8")
+        if re.search(r"(?m)^\s*ports\s*:", compose):
+            errors.append("Phase 2 Compose services must not publish host ports")
+        if compose.count("internal: true") < 3:
+            errors.append("Phase 2 must use three internal Docker networks")
+        if "stalwartlabs/stalwart:v0.16.24" not in compose:
+            errors.append("Phase 2 Stalwart image must stay pinned to v0.16.24")
+    if postfix_path.is_file():
+        postfix = postfix_path.read_text(encoding="utf-8")
+        required = (
+            "@LAB_ORIGIN_IP@/32",
+            "relay_recipient_maps = hash:",
+            "transport_maps = hash:",
+            "relayhost = [lab-sink]:2525",
+            "permit_mynetworks, reject_unauth_destination",
+        )
+        for marker in required:
+            if marker not in postfix:
+                errors.append(f"Phase 2 Postfix policy is missing {marker!r}")
+        if "smtpd_client_restrictions" in postfix:
+            errors.append("Phase 2 Postfix must allow untrusted SMTP to reach recipient policy")
+        if re.search(r"(?m)^\s*relay_domains\s*=\s*(?:\*|$)", postfix):
+            errors.append("Phase 2 Postfix must not configure wildcard relay domains")
+    return errors
+
+
 def _candidate_files(root: Path) -> list[Path]:
     try:
         result = subprocess.run(
@@ -402,6 +443,7 @@ def validate_repository(root: Path, env_file: Path, environment: str | None = No
             errors.append(f"required repository path is missing: {relative}")
     errors.extend(validate_domain_examples(root / "examples" / "domains"))
     errors.extend(validate_image_pins(root))
+    errors.extend(validate_phase2_lab(root))
     errors.extend(scan_private_material(root))
     errors.extend(validate_markdown_links(root))
     return errors
