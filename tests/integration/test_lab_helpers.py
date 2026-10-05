@@ -102,6 +102,8 @@ class LabHelperTests(unittest.TestCase):
             management = listener_op["value"]["listener-management"]
             self.assertIn("127.0.0.1:8080", management["bind"])
             self.assertIn("172.29.240.10:8080", management["bind"])
+            pyzor = next(item for item in plan if item["object"] == "SpamPyzor")
+            self.assertFalse(pyzor["value"]["enable"])
             strategy = next(item for item in plan if item["object"] == "MtaOutboundStrategy")
             self.assertEqual("'postfix-edge'", strategy["value"]["route"]["else"])
 

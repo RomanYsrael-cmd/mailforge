@@ -8,4 +8,6 @@ python scripts/lab.py up creates disposable mailbox credentials and DKIM keys un
 
 The normal management listener binds to the Stalwart private lab address on port 8080. It is not routed through HAProxy. Client HTTPS, SMTP submission, and IMAPS are forwarded in TCP mode and TLS terminates at Stalwart. The lab certificate may be self-signed.
 
+The isolated lab disables Pyzor's public lookup because its Docker networks have no Internet egress.
+
 The container's RocksDB data is persistent at var/mailforge/stalwart/data. Do not put generated passwords, recovery credentials, or DKIM private keys in Git. The Compose profile is lab and publishes no host ports.

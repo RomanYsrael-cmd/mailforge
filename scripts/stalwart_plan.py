@@ -181,6 +181,11 @@ def build_plan() -> list[dict[str, Any]]:
             },
             {
                 "@type": "update",
+                "object": "SpamPyzor",
+                "value": {"enable": False},
+            },
+            {
+                "@type": "update",
                 "object": "MtaOutboundStrategy",
                 "value": {
                     "route": {
