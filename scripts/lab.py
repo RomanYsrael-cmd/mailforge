@@ -174,6 +174,7 @@ def down(*, remove_state: bool = False) -> None:
         containers = run(["ps", "--all", "-q", "edge-postfix"], capture=True)
         if (containers.stdout or "").strip():
             run(["stop", "edge-postfix"])
+            run(["rm", "-f", "edge-postfix"])
             run(
                 [
                     "run", "--rm", "--no-deps", "-T", "--user", "0:0",
