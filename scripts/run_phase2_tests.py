@@ -239,7 +239,7 @@ def run_suite() -> list[str]:
     queue_message_id = f"mf-queue-{queue_id}@mailforge.invalid"
     queue_body = f"MailForge queued while origin down {queue_id}"
     smtp(
-        "postmaster@example.org",
+        "support@example.org",
         queue_message_id,
         queue_body,
         sender=queue_sender,
