@@ -158,8 +158,15 @@ def tls_fingerprint(host: str, port: int, *, starttls: bool) -> str:
 def probe_tls(_: argparse.Namespace) -> int:
     pairs = []
     for port, starttls in ((443, False), (465, False), (587, True), (993, False)):
-        direct = tls_fingerprint("origin-stalwart", port, starttls=starttls)
-        proxied = tls_fingerprint("edge-proxy", port, starttls=starttls)
+        fingerprints = {}
+        mode = "STARTTLS" if starttls else "implicit TLS"
+        for host in ("origin-stalwart", "edge-proxy"):
+            try:
+                fingerprints[host] = tls_fingerprint(host, port, starttls=starttls)
+            except Exception as exc:
+                raise RuntimeError(f"{mode} probe failed for {host}:{port}: {exc}") from exc
+        direct = fingerprints["origin-stalwart"]
+        proxied = fingerprints["edge-proxy"]
         if direct != proxied:
             raise AssertionError(f"Port {port} certificate differs across the L4 proxy.")
         pairs.append({"port": port, "sha256": direct, "path": "STARTTLS" if starttls else "implicit/HTTPS"})
